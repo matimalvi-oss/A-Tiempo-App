@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Operativo Delivery</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+    <header class="header">
+        <div class="header-left">
+            <h1><i data-lucide="package"></i> Panel Operativo</h1>
+            <div class="metrics">
+                <span class="metric-badge">Activos: <strong id="metric-activos">0</strong></span>
+                <span class="metric-badge">Pendientes: <strong id="metric-pendientes">0</strong></span>
+            </div>
+        </div>
+        <div class="header-right">
+            <select id="filter-comercio" class="select-filter">
+                <option value="todos">Todos los Comercios</option>
+            </select>
+            <button class="btn-new-order" id="btn-new-order">
+                <i data-lucide="plus" size="16"></i> Nuevo Pedido
+            </button>
+            <button class="btn-clear-delivered" id="btn-clear-delivered" title="Eliminar todos los pedidos entregados">
+                <i data-lucide="trash-2" size="16"></i> Limpiar Entregados
+            </button>
+            <div class="status-indicator">
+                <span class="dot"></span> En línea
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <main class="kanban-board" id="kanban-board"></main>
+
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2><i data-lucide="users"></i> Riders</h2>
+                <button class="btn-icon" id="btn-add-rider" title="Agregar Rider">
+                    <i data-lucide="plus-circle" size="18"></i>
+                </button>
+            </div>
+            <div class="map-placeholder">
+                <i data-lucide="map-pin"></i>
+                <p>Mapa en tiempo real</p>
+            </div>
+            <div class="riders-list" id="riders-list"></div>
+            
+            <div class="sidebar-section">
+                <div class="sidebar-header">
+                    <h2><i data-lucide="store"></i> Comercios</h2>
+                    <button class="btn-icon" id="btn-add-comercio" title="Agregar Comercio">
+                        <i data-lucide="plus-circle" size="18"></i>
+                    </button>
+                </div>
+                <div class="comercios-list" id="comercios-list"></div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- MODAL ASIGNAR RIDER -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Asignar Rider</h2>
+                <button class="close-btn" id="close-modal"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body" id="modal-body"></div>
+        </div>
+    </div>
+
+    <!-- MODAL NUEVO PEDIDO -->
+    <div class="modal-overlay" id="modal-new-order">
+        <div class="modal modal-large">
+            <div class="modal-header">
+                <h2>Crear Nuevo Pedido</h2>
+                <button class="close-btn" id="close-new-order"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-new-order">
+                    <div class="form-group">
+                        <label>Comercio</label>
+                        <!-- ID CAMBIADO AQUÍ -->
+                        <select id="form-comercio-pedido" required></select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Nombre del Cliente</label>
+                            <input type="text" id="form-cliente-nombre" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Teléfono del Cliente</label>
+                            <input type="text" id="form-cliente-telefono" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Dirección de Entrega</label>
+                        <input type="text" id="form-direccion" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Monto a Cobrar ($)</label>
+                            <input type="number" id="form-monto" step="0.01" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Costo Delivery ($)</label>
+                            <input type="number" id="form-delivery" step="0.01" value="0">
+                        </div>
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="form-pagado"> Ya pagado online
+                        </label>
+                    </div>
+                    <button type="submit" class="btn-submit">Crear Pedido</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL COMERCIO (Crear/Editar) -->
+    <div class="modal-overlay" id="modal-comercio">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="comercio-modal-title">Nuevo Comercio</h2>
+                <button class="close-btn" id="close-comercio"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body">
+                <!-- ID CAMBIADO AQUÍ -->
+                <form id="form-nuevo-comercio">
+                    <input type="hidden" id="comercio-id">
+                    <div class="form-group">
+                        <label>Nombre del Comercio</label>
+                        <input type="text" id="comercio-nombre" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Dirección</label>
+                        <input type="text" id="comercio-direccion" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Teléfono</label>
+                        <input type="text" id="comercio-telefono" required>
+                    </div>
+                    <button type="submit" class="btn-submit">Guardar Comercio</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL RIDER (Crear/Editar) -->
+    <div class="modal-overlay" id="modal-rider">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="rider-modal-title">Nuevo Rider</h2>
+                <button class="close-btn" id="close-rider"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-rider">
+                    <input type="hidden" id="rider-id">
+                    <div class="form-group">
+                        <label>Nombre</label>
+                        <input type="text" id="rider-nombre" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Teléfono</label>
+                        <input type="text" id="rider-telefono" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Vehículo</label>
+                        <select id="rider-vehiculo" required>
+                            <option value="Moto">Moto</option>
+                            <option value="Bicicleta">Bicicleta</option>
+                            <option value="Auto">Auto</option>
+                            <option value="Camioneta">Camioneta</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn-submit">Guardar Rider</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+    <script>lucide.createIcons();</script>
+
+    <!-- MODAL EDITAR PEDIDO -->
+    <div class="modal-overlay" id="modal-edit-order">
+        <div class="modal modal-large">
+            <div class="modal-header">
+                <h2>Editar Pedido #<span id="edit-pedido-id"></span></h2>
+                <button class="close-btn" onclick="document.getElementById('modal-edit-order').classList.remove('active')"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-edit-order">
+                    <input type="hidden" id="edit-pedido-id-input">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Estado del Pedido</label>
+                            <select id="edit-estado" required>
+                                <option value="pendiente">Pendiente</option>
+                                <option value="asignado">Asignado</option>
+                                <option value="en_camino_comercio">Yendo al Local</option>
+                                <option value="retirado">Retirado (En camino al cliente)</option>
+                                <option value="entregado">Entregado</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Rider Asignado</label>
+                            <select id="edit-rider">
+                                <option value="">-- Sin asignar --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Nombre del Cliente</label>
+                            <input type="text" id="edit-cliente-nombre" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Teléfono del Cliente</label>
+                            <input type="text" id="edit-cliente-telefono" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Dirección de Entrega</label>
+                        <input type="text" id="edit-direccion" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Monto a Cobrar ($)</label>
+                            <input type="number" id="edit-monto" step="0.01">
+                        </div>
+                        <div class="form-group">
+                            <label>Costo Delivery ($)</label>
+                            <input type="number" id="edit-delivery" step="0.01">
+                        </div>
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="edit-pagado"> Ya pagado online
+                        </label>
+                    </div>
+                    <button type="submit" class="btn-submit">Guardar Cambios</button>
+                </form>
+            </div>
+        </div>
+    </div>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#3b82f6">
+<!-- Registro del Service Worker -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('✅ Service Worker registrado:', reg.scope))
+        .catch(err => console.log('❌ Error al registrar SW:', err));
+    });
+  }
+</script>
+<!-- PWA iOS -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="A Tiempo App">
+<link rel="apple-touch-icon" href="/icon-192.png">
+</body>
+</html>
