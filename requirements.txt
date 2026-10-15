@@ -1,7 +1,4 @@
 fastapi
 uvicorn
-<<<<<<< HEAD
 python-multipart
-=======
-python-multipart
->>>>>>> 6d221074aff155504ba486749c97c579b528d5ca
+psycopg2-binary
