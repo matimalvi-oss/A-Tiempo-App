@@ -7,10 +7,10 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, timedelta
 from database import get_db, init_db, row_to_dict, rows_to_list
-from flask import Flask, send_from_directory
+import uvicorn
 import os
 app = FastAPI()
-app = Flask(__name__, static_folder='static')
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
