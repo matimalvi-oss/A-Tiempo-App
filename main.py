@@ -1,22 +1,43 @@
-# main.py
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, timedelta
 from database import get_db, init_db, row_to_dict, rows_to_list
 import uvicorn
 import os
+
 app = FastAPI()
 
+# --- MIDDLEWARE CORS ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# Inicializar base de datos al arrancar
+# --- SERVIDOR DE ARCHIVOS ESTÁTICOS ---
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# --- RUTAS PWA (Manifest y Service Worker en la raíz) ---
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    with open("static/index.html", "r", encoding="utf-8") as f:
+        return HTMLResponse(content=f.read())
+
+@app.get("/manifest.json")
+async def manifest():
+    return FileResponse("static/manifest.json", media_type="application/json")
+
+@app.get("/sw.js")
+async def service_worker():
+    return FileResponse("static/sw.js", media_type="application/javascript")
+
+# --- INICIALIZAR BASE DE DATOS ---
 init_db()
 
 # --- MODELOS ---
@@ -68,21 +89,6 @@ class UpdateOrderRequest(BaseModel):
 
 # --- ENDPOINTS: DASHBOARD ---
 
-# Servir el index.html en la raíz
-@app.route('/')
-def index():
-    return send_from_directory('static', 'index.html')
-
-# Servir el manifest.json
-@app.route('/manifest.json')
-def manifest():
-    return send_from_directory('static', 'manifest.json')
-
-# Servir el service worker
-@app.route('/sw.js')
-def sw():
-    return send_from_directory('static', 'sw.js', mimetype='application/javascript')
-
 @app.get("/api/dashboard")
 def get_dashboard_data():
     conn = get_db()
@@ -116,7 +122,6 @@ def crear_pedido(req: CreateOrderRequest):
     conn = get_db()
     cursor = conn.cursor()
     
-    # Buscar o crear cliente
     cursor.execute("SELECT id FROM clientes WHERE telefono = ?", (req.cliente_telefono,))
     cliente = cursor.fetchone()
     
@@ -127,7 +132,6 @@ def crear_pedido(req: CreateOrderRequest):
                       (req.cliente_nombre, req.cliente_telefono))
         cliente_id = cursor.lastrowid
     
-    # Obtener dirección del comercio
     cursor.execute("SELECT direccion FROM comercios WHERE id = ?", (req.comercio_id,))
     comercio = cursor.fetchone()
     
@@ -194,7 +198,6 @@ def actualizar_estado(pedido_id: int, req: UpdateStatusRequest):
     elif req.nuevo_estado == "entregado":
         cursor.execute("UPDATE pedidos SET estado = ?, hora_entrega = ? WHERE id = ?",
                       (req.nuevo_estado, ahora, pedido_id))
-        # Liberar rider
         cursor.execute("SELECT rider_id FROM pedidos WHERE id = ?", (pedido_id,))
         pedido = cursor.fetchone()
         if pedido and pedido['rider_id']:
@@ -265,7 +268,6 @@ def eliminar_comercio(comercio_id: int):
         conn.close()
         raise HTTPException(404, "Comercio no encontrado")
     
-    # Verificar pedidos activos
     cursor.execute("SELECT id FROM pedidos WHERE comercio_id = ? AND estado != 'entregado'", (comercio_id,))
     if cursor.fetchone():
         conn.close()
@@ -337,7 +339,6 @@ def eliminar_rider(rider_id: int):
         conn.close()
         raise HTTPException(404, "Rider no encontrado")
     
-    # Verificar pedidos activos
     cursor.execute("SELECT id FROM pedidos WHERE rider_id = ? AND estado != 'entregado'", (rider_id,))
     if cursor.fetchone():
         conn.close()
@@ -387,12 +388,10 @@ def actualizar_pedido(pedido_id: int, req: UpdateOrderRequest):
         updates.append("estado = ?")
         params.append(req.estado)
         
-        # Lógica de liberación de rider si se entrega o se desasigna
         if req.estado == 'entregado' or req.rider_id is None:
             if pedido['rider_id']:
                 cursor.execute("UPDATE riders SET estado = 'disponible' WHERE id = ?", (pedido['rider_id'],))
         
-        # Actualizar timestamps según el estado
         ahora = datetime.now()
         if req.estado == 'retirado' and not pedido['hora_real_retiro']:
             updates.append("hora_real_retiro = ?")
@@ -400,6 +399,7 @@ def actualizar_pedido(pedido_id: int, req: UpdateOrderRequest):
         elif req.estado == 'entregado' and not pedido['hora_entrega']:
             updates.append("hora_entrega = ?")
             params.append(ahora)
+    
     if updates:
         params.append(pedido_id)
         cursor.execute(f"UPDATE pedidos SET {', '.join(updates)} WHERE id = ?", params)
@@ -414,7 +414,6 @@ def actualizar_pedido(pedido_id: int, req: UpdateOrderRequest):
 def limpiar_pedidos_entregados():
     conn = get_db()
     cursor = conn.cursor()
-    # Eliminamos solo los que están en estado 'entregado'
     cursor.execute("DELETE FROM pedidos WHERE estado = 'entregado'")
     conn.commit()
     conn.close()
@@ -424,20 +423,12 @@ def limpiar_pedidos_entregados():
 def eliminar_pedido(pedido_id: int):
     conn = get_db()
     cursor = conn.cursor()
-    # Eliminamos el pedido (y opcionalmente podríamos limpiar el historial si lo tuvieras)
     cursor.execute("DELETE FROM pedidos WHERE id = ?", (pedido_id,))
     conn.commit()
     conn.close()
     return {"message": "Pedido eliminado"}
 
-
-# --- SERVIDOR DE ARCHIVOS ---
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-@app.get("/")
-def read_root():
-    return FileResponse("static/index.html")
-
+# --- EJECUCIÓN LOCAL (no se usa en Railway) ---
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    uvicorn.run(app, host="0.0.0.0", port=port)
