@@ -684,6 +684,7 @@ async function cargarResumenLiquidaciones() {
                 </div>
             `;
         }).join('');
+    await cargarResumenLocales(desde, hasta);
     } catch (err) {
         console.error(err);
         contenedor.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #dc2626; padding: 32px 0;">Error al cargar los datos.</p>';
@@ -757,4 +758,65 @@ async function verDetalleLiquidacion(riderId, riderNombre, desde, hasta) {
 
 function cerrarModalLiquidacion() {
     document.getElementById('modal-liquidacion').style.display = 'none';
+}
+
+// ==========================================
+// LIQUIDACIÓN POR LOCAL (COMERCIO)
+// ==========================================
+
+async function cargarResumenLocales(desde, hasta) {
+    const contenedor = document.getElementById('grid-resumen-locales');
+    contenedor.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #6b7280; padding: 32px 0;">Cargando datos...</p>';
+
+    try {
+        const res = await fetch(`/api/liquidaciones/locales?desde=${desde}&hasta=${hasta}`);
+        const dataLoc = await res.json();
+        
+        if (!dataLoc.locales || dataLoc.locales.length === 0) {
+            contenedor.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #6b7280; padding: 32px 0;">No hay locales con pedidos en este período.</p>';
+            return;
+        }
+
+        contenedor.innerHTML = dataLoc.locales.map(loc => {
+            const ef = parseFloat(loc.total_efectivo_cobrado || 0);
+            const dl = parseFloat(loc.total_costo_delivery || 0);
+            const saldo = parseFloat(loc.saldo_liquidar || 0);
+            
+            // Color del saldo: verde si el local recibe plata, rojo si debe
+            const saldoColor = saldo >= 0 ? '#16a34a' : '#dc2626';
+            const saldoBg = saldo >= 0 ? '#f0fdf4' : '#fef2f2';
+            const saldoBorder = saldo >= 0 ? '#bbf7d0' : '#fecaca';
+            const saldoLabel = saldo >= 0 ? 'A favor del local' : 'Local debe diferencia';
+            
+            return `
+                <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                        <div style="width: 40px; height: 40px; background: #fef3c7; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; font-size: 1.25rem;">🏪</div>
+                        <div>
+                            <h3 style="margin: 0; font-weight: bold; color: #1f2937;">${loc.comercio_nombre}</h3>
+                            <p style="margin: 0; font-size: 0.75rem; color: #6b7280;">${loc.pedidos} pedidos entregados</p>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; font-size: 0.875rem;">
+                        <div style="background: #fef2f2; padding: 8px; border-radius: 4px; text-align: center;">
+                            <p style="margin: 0; font-size: 0.75rem; color: #dc2626;">Efectivo cobrado</p>
+                            <p style="margin: 0; font-weight: bold; color: #dc2626;">${formatearMoneda(ef)}</p>
+                        </div>
+                        <div style="background: #eff6ff; padding: 8px; border-radius: 4px; text-align: center;">
+                            <p style="margin: 0; font-size: 0.75rem; color: #2563eb;">Costo Delivery</p>
+                            <p style="margin: 0; font-weight: bold; color: #2563eb;">${formatearMoneda(dl)}</p>
+                        </div>
+                    </div>
+                    <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; background: ${saldoBg}; border: 1px solid ${saldoBorder}; border-radius: 6px; padding: 12px; text-align: center;">
+                        <p style="margin: 0 0 4px 0; font-size: 0.75rem; color: #4b5563;">💰 Se le debe liquidar al local</p>
+                        <p style="margin: 0; font-size: 1.25rem; font-weight: bold; color: ${saldoColor};">${formatearMoneda(Math.abs(saldo))}</p>
+                        <p style="margin: 4px 0 0 0; font-size: 0.7rem; color: #6b7280;">${saldoLabel}</p>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (err) {
+        console.error(err);
+        contenedor.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #dc2626; padding: 32px 0;">Error al cargar los datos de locales.</p>';
+    }
 }

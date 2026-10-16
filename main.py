@@ -581,6 +581,43 @@ def detalle_liquidacion(rider_id: int, desde: str, hasta: str):
         }
     }
 
+@app.get("/api/liquidaciones/locales")
+def resumen_liquidaciones_locales(desde: str, hasta: str):
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    fecha_desde = f"{desde} 00:00:00"
+    fecha_hasta = f"{hasta} 23:59:59"
+    
+    query = """
+        SELECT 
+            c.id as comercio_id,
+            c.nombre as comercio_nombre,
+            COUNT(p.id) as pedidos,
+            COALESCE(SUM(p.monto_a_cobrar), 0) as total_efectivo_cobrado,
+            COALESCE(SUM(p.costo_delivery), 0) as total_costo_delivery
+        FROM comercios c
+        LEFT JOIN pedidos p ON c.id = p.comercio_id 
+            AND p.estado = 'entregado' 
+            AND p.hora_entrega >= %s::timestamp 
+            AND p.hora_entrega <= %s::timestamp
+        WHERE c.estado = 'activo'
+        GROUP BY c.id, c.nombre
+        ORDER BY c.nombre
+    """
+    cursor.execute(query, (fecha_desde, fecha_hasta))
+    locales = rows_to_list(cursor.fetchall())
+    conn.close()
+    
+    # Calculamos el saldo a liquidar para cada local
+    for loc in locales:
+        ef = float(loc['total_efectivo_cobrado'] or 0)
+        dl = float(loc['total_costo_delivery'] or 0)
+        # Lo que se le debe liquidar al local = efectivo cobrado - costo delivery
+        loc['saldo_liquidar'] = ef - dl
+        
+    return {"locales": locales}
+
 # --- EJECUCIÓN LOCAL ---
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
