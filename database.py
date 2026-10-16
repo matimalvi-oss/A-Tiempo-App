@@ -40,7 +40,7 @@ def init_db():
 # Como RealDictCursor ya devuelve diccionarios, estas funciones son redundantes,
 # pero las dejamos por compatibilidad con tu main.py
 def row_to_dict(row):
-    return dict(row) if row else None
+    return row if row else None
 
 def rows_to_list(rows):
-    return [dict(row) for row in rows]
+    return list(rows)
