@@ -160,3 +160,22 @@ body { background: var(--bg); color: var(--text-main); display: flex; flex-direc
 .btn-danger:hover {
     background: #fecaca;
 }
+
+/* Scrollbar personalizado para liquidaciones */
+#vista-liquidaciones::-webkit-scrollbar {
+    width: 8px;
+}
+
+#vista-liquidaciones::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+}
+
+#vista-liquidaciones::-webkit-scrollbar-thumb {
+    background: #94a3b8;
+    border-radius: 4px;
+}
+
+#vista-liquidaciones::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+}

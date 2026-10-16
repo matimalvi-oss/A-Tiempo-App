@@ -820,3 +820,42 @@ async function cargarResumenLocales(desde, hasta) {
         contenedor.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #dc2626; padding: 32px 0;">Error al cargar los datos de locales.</p>';
     }
 }
+
+// ==========================================
+// TOGGLE SIDEBAR
+// ==========================================
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const btn = document.getElementById('btn-toggle-sidebar');
+    const container = document.querySelector('.container');
+    
+    if (sidebar.style.display === 'none') {
+        // Mostrar sidebar
+        sidebar.style.display = 'block';
+        btn.innerHTML = '◀';
+        btn.style.right = '20px';
+        container.style.marginRight = '0';
+        localStorage.setItem('sidebarVisible', 'true');
+    } else {
+        // Ocultar sidebar
+        sidebar.style.display = 'none';
+        btn.innerHTML = '▶';
+        btn.style.right = '20px';
+        container.style.marginRight = '0';
+        localStorage.setItem('sidebarVisible', 'false');
+    }
+}
+
+// Restaurar estado del sidebar al cargar la página
+document.addEventListener('DOMContentLoaded', () => {
+    const sidebarVisible = localStorage.getItem('sidebarVisible');
+    if (sidebarVisible === 'false') {
+        const sidebar = document.getElementById('sidebar');
+        const btn = document.getElementById('btn-toggle-sidebar');
+        if (sidebar) sidebar.style.display = 'none';
+        if (btn) {
+            btn.innerHTML = '▶';
+        }
+    }
+});
