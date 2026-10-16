@@ -123,22 +123,19 @@ def crear_pedido(req: CreateOrderRequest):
     cursor = conn.cursor()
     
     try:
+        # 1. Buscar o crear cliente
         cursor.execute("SELECT id FROM clientes WHERE telefono = %s", (req.cliente_telefono,))
         cliente = cursor.fetchone()
         
         if cliente:
             cliente_id = cliente['id']
         else:
-            cursor.execute("INSERT INTO clientes (nombre, telefono) VALUES (%s, %s)", 
+            # AGREGAMOS "RETURNING id" AQUÍ
+            cursor.execute("INSERT INTO clientes (nombre, telefono) VALUES (%s, %s) RETURNING id", 
                           (req.cliente_nombre, req.cliente_telefono))
-            cliente_result = cursor.fetchone()  # <-- AGREGAR RETURNING ID AQUÍ TAMBIÉN
-            if cliente_result:
-                cliente_id = cliente_result['id']
-            else:
-                # Si no hay RETURNING, usamos lastval()
-                cursor.execute("SELECT lastval()")
-                cliente_id = cursor.fetchone()['id']
+            cliente_id = cursor.fetchone()['id']
         
+        # 2. Obtener dirección del comercio
         cursor.execute("SELECT direccion FROM comercios WHERE id = %s", (req.comercio_id,))
         comercio = cursor.fetchone()
         
@@ -148,6 +145,7 @@ def crear_pedido(req: CreateOrderRequest):
         ahora = datetime.now()
         hora_estimada = ahora + timedelta(minutes=20)
         
+        # 3. Crear el pedido
         cursor.execute('''
             INSERT INTO pedidos 
             (comercio_id, cliente_id, rider_id, direccion_recogida, direccion_entrega, estado, 
@@ -157,16 +155,14 @@ def crear_pedido(req: CreateOrderRequest):
         ''', (req.comercio_id, cliente_id, comercio['direccion'], req.direccion_entrega,
               req.monto_a_cobrar, req.costo_delivery, int(req.pagado), ahora, hora_estimada))
         
-        result = cursor.fetchone()
+        pedido_id = cursor.fetchone()['id']
         conn.commit()
         
-        if result:
-            pedido_id = result['id']
-            print(f"✅ Pedido creado con ID: {pedido_id}")
-            return {"message": "Pedido creado", "pedido_id": pedido_id}
-        else:
-            raise HTTPException(500, "No se pudo crear el pedido")
+        print(f"✅ Pedido creado con ID: {pedido_id}")
+        return {"message": "Pedido creado", "pedido_id": pedido_id}
+        
     except HTTPException:
+        conn.rollback()
         raise
     except Exception as e:
         conn.rollback()
