@@ -153,7 +153,7 @@ def crear_pedido(req: CreateOrderRequest):
             VALUES (%s, %s, NULL, %s, %s, 'pendiente', %s, %s, %s, %s, %s)
             RETURNING id
         ''', (req.comercio_id, cliente_id, comercio['direccion'], req.direccion_entrega,
-              req.monto_a_cobrar, req.costo_delivery, int(req.pagado), ahora, hora_estimada))
+              req.monto_a_cobrar, req.costo_delivery, req.pagado, ahora, hora_estimada))
         
         pedido_id = cursor.fetchone()['id']
         conn.commit()
@@ -420,7 +420,7 @@ def actualizar_pedido(pedido_id: int, req: UpdateOrderRequest):
         params.append(req.costo_delivery)
     if req.pagado is not None:
         updates.append("pagado = %s")
-        params.append(int(req.pagado))
+        params.append(req.pagado)
     if req.rider_id is not None:
         updates.append("rider_id = %s")
         params.append(req.rider_id)
