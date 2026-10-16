@@ -33,33 +33,168 @@
         </div>
     </header>
 
-    <div class="container">
-        <main class="kanban-board" id="kanban-board"></main>
+<!-- Navegación de Vistas -->
+<div style="display: flex; gap: 10px; margin-bottom: 20px; padding: 10px; background: #f3f4f6; border-radius: 8px;">
+    <button onclick="mostrarVista('pedidos')" id="btn-vista-pedidos" style="padding: 8px 16px; border: none; background: #3b82f6; color: white; border-radius: 6px; cursor: pointer; font-weight: 600;">
+        📋 Pedidos
+    </button>
+    <button onclick="mostrarVista('liquidaciones')" id="btn-vista-liquidaciones" style="padding: 8px 16px; border: none; background: white; color: #374151; border-radius: 6px; cursor: pointer; font-weight: 600;">
+        💰 Liquidaciones
+    </button>
+</div>
 
-        <aside class="sidebar">
+<div class="container">
+    <!-- Vista Pedidos (Kanban) - ID original mantenido -->
+    <main class="kanban-board" id="kanban-board"></main>
+
+    <!-- Vista Liquidaciones (Oculta por defecto) -->
+    <div id="vista-liquidaciones" style="display: none; width: 100%; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px;">
+            <h2 style="margin: 0; font-size: 1.5rem; font-weight: bold;">💰 Liquidación de Riders</h2>
+            <div style="display: flex; gap: 10px; align-items: center; background: #f9fafb; padding: 8px; border-radius: 6px; border: 1px solid #e5e7eb;">
+                <label style="font-size: 0.875rem; font-weight: 500;">Desde:</label>
+                <input type="date" id="liq-desde" style="padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 4px;">
+                <label style="font-size: 0.875rem; font-weight: 500;">Hasta:</label>
+                <input type="date" id="liq-hasta" style="padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 4px;">
+                <button onclick="cargarResumenLiquidaciones()" style="padding: 6px 12px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">
+                    🔍 Consultar
+                </button>
+            </div>
+        </div>
+        <div id="grid-resumen-riders" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+            <p style="grid-column: 1 / -1; text-align: center; color: #6b7280; padding: 32px 0;">Seleccioná un rango de fechas y hacé clic en "Consultar"</p>
+        </div>
+    </div>
+
+    <!-- Sidebar (se mantiene igual) -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2><i data-lucide="users"></i> Riders</h2>
+            <button class="btn-icon" id="btn-add-rider" title="Agregar Rider">
+                <i data-lucide="plus-circle" size="18"></i>
+            </button>
+        </div>
+        <div class="map-placeholder">
+            <i data-lucide="map-pin"></i>
+            <p>Mapa en tiempo real</p>
+        </div>
+        <div class="riders-list" id="riders-list"></div>
+        
+        <div class="sidebar-section">
             <div class="sidebar-header">
-                <h2><i data-lucide="users"></i> Riders</h2>
-                <button class="btn-icon" id="btn-add-rider" title="Agregar Rider">
+                <h2><i data-lucide="store"></i> Comercios</h2>
+                <button class="btn-icon" id="btn-add-comercio" title="Agregar Comercio">
                     <i data-lucide="plus-circle" size="18"></i>
                 </button>
             </div>
-            <div class="map-placeholder">
-                <i data-lucide="map-pin"></i>
-                <p>Mapa en tiempo real</p>
-            </div>
-            <div class="riders-list" id="riders-list"></div>
-            
-            <div class="sidebar-section">
-                <div class="sidebar-header">
-                    <h2><i data-lucide="store"></i> Comercios</h2>
-                    <button class="btn-icon" id="btn-add-comercio" title="Agregar Comercio">
-                        <i data-lucide="plus-circle" size="18"></i>
-                    </button>
+            <div class="comercios-list" id="comercios-list"></div>
+        </div>
+    </aside>
+</div>
+
+<!-- Modal de Liquidación (Pegar esto JUSTO ANTES de cerrar </body> en tu index.html) -->
+<div id="modal-liquidacion" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: 8px; width: 90%; max-width: 1000px; max-height: 90vh; display: flex; flex-direction: column; margin: 20px;">
+        <div style="padding: 16px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; background: #f9fafb; border-radius: 8px 8px 0 0;">
+            <h2 id="modal-liq-titulo" style="font-size: 1.25rem; font-weight: bold; color: #1f2937; display: flex; align-items: center; margin: 0;">👤 Liquidación</h2>
+            <button onclick="cerrarModalLiquidacion()" style="color: #6b7280; background: none; border: none; cursor: pointer; font-size: 1.5rem; line-height: 1;">&times;</button>
+        </div>
+        <div id="modal-liq-periodo" style="padding: 8px 16px; background: #eff6ff; border-bottom: 1px solid #e5e7eb; font-size: 0.875rem; color: #1d4ed8; display: flex; align-items: center;">📅 Período: -</div>
+        <div id="modal-liq-body" style="padding: 16px; overflow-y: auto; flex-grow: 1;">
+            <p style="color: #6b7280; text-align: center; padding: 32px 0;">Cargando detalle...</p>
+        </div>
+        <div style="padding: 16px; border-top: 1px solid #e5e7eb; background: #f9fafb; border-radius: 0 0 8px 8px;">
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; text-align: center; margin-bottom: 16px;">
+                <div style="padding: 12px; background: #fef2f2; border-radius: 6px; border: 1px solid #fecaca;">
+                    <p style="font-size: 0.75rem; color: #dc2626; font-weight: bold; margin-bottom: 4px; margin-top: 0;">💵 Debe (Efectivo)</p>
+                    <p id="liq-total-efectivo" style="font-size: 1.5rem; font-weight: bold; color: #991b1b; margin: 0;">$ 0</p>
                 </div>
-                <div class="comercios-list" id="comercios-list"></div>
+                <div style="padding: 12px; background: #f0fdf4; border-radius: 6px; border: 1px solid #bbf7d0;">
+                    <p style="font-size: 0.75rem; color: #16a34a; font-weight: bold; margin-bottom: 4px; margin-top: 0;">🚴 A Favor (Delivery)</p>
+                    <p id="liq-total-delivery" style="font-size: 1.5rem; font-weight: bold; color: #166534; margin: 0;">$ 0</p>
+                </div>
+                <div style="padding: 12px; background: #eff6ff; border-radius: 6px; border: 1px solid #bfdbfe;">
+                    <p style="font-size: 0.75rem; color: #2563eb; font-weight: bold; margin-bottom: 4px; margin-top: 0;">⚖️ Saldo Neto</p>
+                    <p id="liq-total-saldo" style="font-size: 1.5rem; font-weight: bold; color: #1e40af; margin: 0;">$ 0</p>
+                </div>
             </div>
-        </aside>
+            <div style="display: flex; justify-content: flex-end;">
+                <button onclick="cerrarModalLiquidacion()" style="padding: 8px 16px; background: #2563eb; color: white; border-radius: 6px; border: none; cursor: pointer; font-size: 0.875rem; display: flex; align-items: center;">✔ Cerrar</button>
+            </div>
+        </div>
     </div>
+</div>
+
+    <!-- VISTA: LIQUIDACIONES -->
+<div id="vista-liquidaciones" class="hidden p-6 max-w-7xl mx-auto">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <h1 class="text-2xl font-bold text-gray-800 flex items-center">
+            <i data-lucide="wallet" class="w-6 h-6 mr-2"></i> Liquidación de Riders
+        </h1>
+        <div class="flex flex-wrap items-center gap-2 bg-white p-2 rounded-lg shadow-sm border">
+            <label class="text-sm text-gray-600 font-medium">Desde:</label>
+            <input type="date" id="liq-desde" class="border rounded px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            <label class="text-sm text-gray-600 font-medium">Hasta:</label>
+            <input type="date" id="liq-hasta" class="border rounded px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            <button onclick="cargarResumenLiquidaciones()" class="bg-blue-600 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-700 flex items-center transition">
+                <i data-lucide="search" class="w-4 h-4 mr-1"></i> Consultar
+            </button>
+        </div>
+    </div>
+
+    <!-- Grid de Resumen de Riders -->
+    <div id="grid-resumen-riders" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <p class="text-gray-500 col-span-full text-center py-8">Seleccioná un rango de fechas y hacé clic en "Consultar"</p>
+    </div>
+</div>
+
+<!-- MODAL DE DETALLE DE LIQUIDACIÓN -->
+<div id="modal-liquidacion" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col m-4">
+        <!-- Header -->
+        <div class="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-lg">
+            <h2 id="modal-liq-titulo" class="text-xl font-bold text-gray-800 flex items-center">
+                <i data-lucide="user" class="w-5 h-5 mr-2"></i> Liquidación
+            </h2>
+            <button onclick="cerrarModalLiquidacion()" class="text-gray-500 hover:text-gray-700">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </div>
+
+        <!-- Período -->
+        <div id="modal-liq-periodo" class="px-4 py-2 bg-blue-50 border-b text-sm text-blue-700 flex items-center">
+            <i data-lucide="calendar" class="w-4 h-4 mr-1"></i> Período: -
+        </div>
+
+        <!-- Cuerpo scrollable -->
+        <div id="modal-liq-body" class="p-4 overflow-y-auto flex-grow space-y-6">
+            <p class="text-gray-500 text-center py-8">Cargando detalle...</p>
+        </div>
+
+        <!-- Footer con totales -->
+        <div class="p-4 border-t bg-gray-50 rounded-b-lg">
+            <div class="grid grid-cols-3 gap-4 text-center mb-4">
+                <div class="p-3 bg-red-50 rounded border border-red-200">
+                    <p class="text-xs text-red-600 uppercase font-bold mb-1">💵 Debe (Efectivo)</p>
+                    <p id="liq-total-efectivo" class="text-2xl font-bold text-red-800">$ 0</p>
+                </div>
+                <div class="p-3 bg-green-50 rounded border border-green-200">
+                    <p class="text-xs text-green-600 uppercase font-bold mb-1">🚴 A Favor (Delivery)</p>
+                    <p id="liq-total-delivery" class="text-2xl font-bold text-green-800">$ 0</p>
+                </div>
+                <div class="p-3 bg-blue-50 rounded border border-blue-200">
+                    <p class="text-xs text-blue-600 uppercase font-bold mb-1">⚖️ Saldo Neto</p>
+                    <p id="liq-total-saldo" class="text-2xl font-bold text-blue-800">$ 0</p>
+                </div>
+            </div>
+            <div class="flex justify-end">
+                <button onclick="cerrarModalLiquidacion()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm flex items-center">
+                    <i data-lucide="check" class="w-4 h-4 mr-1"></i> Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
     <!-- MODAL ASIGNAR RIDER -->
     <div class="modal-overlay" id="modal-overlay">

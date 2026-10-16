@@ -428,6 +428,118 @@ def eliminar_pedido(pedido_id: int):
     conn.close()
     return {"message": "Pedido eliminado"}
 
+# ==========================================
+# ENDPOINTS: LIQUIDACIONES DE RIDERS
+# ==========================================
+
+@app.get("/api/liquidaciones/resumen")
+def resumen_liquidaciones(desde: str, hasta: str):
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Convertimos las fechas a formato timestamp para PostgreSQL
+    fecha_desde = f"{desde} 00:00:00"
+    fecha_hasta = f"{hasta} 23:59:59"
+    
+    query = """
+        SELECT 
+            r.id as rider_id,
+            r.nombre as rider_nombre,
+            COUNT(p.id) as viajes,
+            COALESCE(SUM(p.monto_a_cobrar), 0) as total_efectivo,
+            COALESCE(SUM(p.costo_delivery), 0) as total_delivery
+        FROM riders r
+        LEFT JOIN pedidos p ON r.id = p.rider_id 
+            AND p.estado = 'entregado' 
+            AND p.hora_entrega >= %s::timestamp 
+            AND p.hora_entrega <= %s::timestamp
+        GROUP BY r.id, r.nombre
+        ORDER BY r.nombre
+    """
+    cursor.execute(query, (fecha_desde, fecha_hasta))
+    resumen = rows_to_list(cursor.fetchall())
+    conn.close()
+    
+    # Calculamos el saldo neto en Python
+    for r in resumen:
+        ef = float(r['total_efectivo'] or 0)
+        dl = float(r['total_delivery'] or 0)
+        r['saldo'] = dl - ef
+        
+    return {"riders": resumen}
+
+
+@app.get("/api/riders/{rider_id}/liquidacion")
+def detalle_liquidacion(rider_id: int, desde: str, hasta: str):
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    fecha_desde = f"{desde} 00:00:00"
+    fecha_hasta = f"{hasta} 23:59:59"
+    
+    query = """
+        SELECT 
+            p.id,
+            p.hora_entrega,
+            p.monto_a_cobrar,
+            p.costo_delivery,
+            c.id as comercio_id,
+            c.nombre as comercio_nombre
+        FROM pedidos p
+        JOIN comercios c ON p.comercio_id = c.id
+        WHERE p.rider_id = %s
+          AND p.estado = 'entregado'
+          AND p.hora_entrega >= %s::timestamp
+          AND p.hora_entrega <= %s::timestamp
+        ORDER BY c.nombre, p.hora_entrega DESC
+    """
+    cursor.execute(query, (rider_id, fecha_desde, fecha_hasta))
+    pedidos = rows_to_list(cursor.fetchall())
+    conn.close()
+    
+    # Agrupar pedidos por comercio
+    agrupado = {}
+    total_efectivo = 0.0
+    total_delivery = 0.0
+    
+    for p in pedidos:
+        cid = p['comercio_id']
+        if cid not in agrupado:
+            agrupado[cid] = {
+                "comercio_id": cid,
+                "comercio_nombre": p['comercio_nombre'],
+                "viajes": 0,
+                "subtotal_efectivo": 0.0,
+                "subtotal_delivery": 0.0,
+                "pedidos": []
+            }
+        
+        ef = float(p['monto_a_cobrar'] or 0)
+        dl = float(p['costo_delivery'] or 0)
+        
+        agrupado[cid]['viajes'] += 1
+        agrupado[cid]['subtotal_efectivo'] += ef
+        agrupado[cid]['subtotal_delivery'] += dl
+        agrupado[cid]['pedidos'].append({
+            "id": p['id'],
+            "hora_entrega": p['hora_entrega'].strftime('%d/%m %H:%M') if p['hora_entrega'] else 'N/A',
+            "efectivo": ef,
+            "delivery": dl
+        })
+        
+        total_efectivo += ef
+        total_delivery += dl
+        
+    return {
+        "comercios": list(agrupado.values()),
+        "totales": {
+            "viajes": len(pedidos),
+            "efectivo": total_efectivo,
+            "delivery": total_delivery,
+            "saldo": total_delivery - total_efectivo
+        }
+    }
+
 # --- EJECUCIÓN LOCAL ---
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

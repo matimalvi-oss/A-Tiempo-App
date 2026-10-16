@@ -588,3 +588,173 @@ window.deleteAllDelivered = async function() {
         alert('Error de conexión con el servidor');
     }
 };
+
+// ==========================================
+// NAVEGACIÓN DE VISTAS Y LIQUIDACIONES
+// ==========================================
+
+function mostrarVista(vista) {
+    const kanban = document.getElementById('kanban-board');
+    const liquidaciones = document.getElementById('vista-liquidaciones');
+    const btnPedidos = document.getElementById('btn-vista-pedidos');
+    const btnLiquidaciones = document.getElementById('btn-vista-liquidaciones');
+
+    if (vista === 'pedidos') {
+        kanban.style.display = 'block';
+        liquidaciones.style.display = 'none';
+        btnPedidos.style.background = '#3b82f6';
+        btnPedidos.style.color = 'white';
+        btnLiquidaciones.style.background = 'white';
+        btnLiquidaciones.style.color = '#374151';
+    } else if (vista === 'liquidaciones') {
+        kanban.style.display = 'none';
+        liquidaciones.style.display = 'block';
+        btnPedidos.style.background = 'white';
+        btnPedidos.style.color = '#374151';
+        btnLiquidaciones.style.background = '#3b82f6';
+        btnLiquidaciones.style.color = 'white';
+        
+        // Inicializar fechas por defecto (últimos 30 días)
+        const hoy = new Date();
+        const hace30 = new Date();
+        hace30.setDate(hoy.getDate() - 30);
+        document.getElementById('liq-hasta').value = hoy.toISOString().split('T')[0];
+        document.getElementById('liq-desde').value = hace30.toISOString().split('T')[0];
+    }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function formatearMoneda(valor) {
+    return '$ ' + Number(valor || 0).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+async function cargarResumenLiquidaciones() {
+    const desde = document.getElementById('liq-desde').value;
+    const hasta = document.getElementById('liq-hasta').value;
+    if (!desde || !hasta) { alert('Seleccioná un rango de fechas válido.'); return; }
+
+    const contenedor = document.getElementById('grid-resumen-riders');
+    contenedor.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #6b7280; padding: 32px 0;">Cargando datos...</p>';
+
+    try {
+        const res = await fetch(`/api/liquidaciones/resumen?desde=${desde}&hasta=${hasta}`);
+        const dataLiq = await res.json();
+        
+        if (!dataLiq.riders || dataLiq.riders.length === 0) {
+            contenedor.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #6b7280; padding: 32px 0;">No hay datos para este período.</p>';
+            return;
+        }
+
+        contenedor.innerHTML = dataLiq.riders.map(r => {
+            const saldoColor = r.saldo >= 0 ? '#16a34a' : '#dc2626';
+            const saldoBg = r.saldo >= 0 ? '#f0fdf4' : '#fef2f2';
+            const saldoBorder = r.saldo >= 0 ? '#bbf7d0' : '#fecaca';
+            const saldoLabel = r.saldo >= 0 ? 'A favor del rider' : 'Debe entregar';
+            
+            return `
+                <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                        <div style="width: 40px; height: 40px; background: #dbeafe; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px;">👤</div>
+                        <div>
+                            <h3 style="margin: 0; font-weight: bold; color: #1f2937;">${r.rider_nombre}</h3>
+                            <p style="margin: 0; font-size: 0.75rem; color: #6b7280;">ID: #${r.rider_id}</p>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; font-size: 0.875rem;">
+                        <div style="background: #f9fafb; padding: 8px; border-radius: 4px; text-align: center;">
+                            <p style="margin: 0; font-size: 0.75rem; color: #6b7280;">Viajes</p>
+                            <p style="margin: 0; font-weight: bold; font-size: 1.125rem;">${r.viajes}</p>
+                        </div>
+                        <div style="background: #fef2f2; padding: 8px; border-radius: 4px; text-align: center;">
+                            <p style="margin: 0; font-size: 0.75rem; color: #dc2626;">Debe (Ef.)</p>
+                            <p style="margin: 0; font-weight: bold; color: #dc2626;">${formatearMoneda(r.total_efectivo)}</p>
+                        </div>
+                        <div style="background: #f0fdf4; padding: 8px; border-radius: 4px; text-align: center; grid-column: 1 / -1;">
+                            <p style="margin: 0; font-size: 0.75rem; color: #16a34a;">A favor (Delivery)</p>
+                            <p style="margin: 0; font-weight: bold; color: #16a34a;">${formatearMoneda(r.total_delivery)}</p>
+                        </div>
+                    </div>
+                    <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; margin-bottom: 12px; background: ${saldoBg}; border: 1px solid ${saldoBorder}; border-radius: 6px; padding: 12px; text-align: center;">
+                        <p style="margin: 0 0 4px 0; font-size: 0.75rem; color: #4b5563;">Saldo Neto: <span style="font-weight: 600;">${saldoLabel}</span></p>
+                        <p style="margin: 0; font-size: 1.25rem; font-weight: bold; color: ${saldoColor};">${formatearMoneda(Math.abs(r.saldo))}</p>
+                    </div>
+                    <button onclick="verDetalleLiquidacion(${r.rider_id}, '${r.rider_nombre.replace(/'/g, "\\'")}', '${desde}', '${hasta}')" style="width: 100%; padding: 8px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; display: flex; align-items: center; justify-content: center;">
+                        👁️ Ver Detalle por Local
+                    </button>
+                </div>
+            `;
+        }).join('');
+    } catch (err) {
+        console.error(err);
+        contenedor.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #dc2626; padding: 32px 0;">Error al cargar los datos.</p>';
+    }
+}
+
+async function verDetalleLiquidacion(riderId, riderNombre, desde, hasta) {
+    const modal = document.getElementById('modal-liquidacion');
+    const body = document.getElementById('modal-liq-body');
+    
+    document.getElementById('modal-liq-titulo').innerHTML = `👤 Liquidación: ${riderNombre}`;
+    document.getElementById('modal-liq-periodo').innerHTML = `📅 Período: ${desde} al ${hasta}`;
+    body.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 32px 0;">Cargando detalle...</p>';
+    modal.style.display = 'flex';
+
+    try {
+        const res = await fetch(`/api/riders/${riderId}/liquidacion?desde=${desde}&hasta=${hasta}`);
+        const dataLiq = await res.json();
+
+        if (!dataLiq.comercios || dataLiq.comercios.length === 0) {
+            body.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 32px 0;">No hay viajes entregados en este período.</p>';
+        } else {
+            body.innerHTML = dataLiq.comercios.map(c => `
+                <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; background: #f9fafb; margin-bottom: 16px;">
+                    <h3 style="margin: 0 0 12px 0; font-weight: 600; color: #374151; display: flex; align-items: center;">
+                        🏪 ${c.comercio_nombre} <span style="font-size: 0.875rem; font-weight: normal; color: #6b7280; margin-left: 8px;">(${c.viajes} viajes)</span>
+                    </h3>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; font-size: 0.875rem; text-align: left; color: #4b5563; border-collapse: collapse;">
+                            <thead style="font-size: 0.75rem; text-transform: uppercase; color: #374151; background: #e5e7eb;">
+                                <tr>
+                                    <th style="padding: 8px 12px;">ID Pedido</th>
+                                    <th style="padding: 8px 12px;">Fecha/Hora</th>
+                                    <th style="padding: 8px 12px; text-align: right;">💵 Efectivo</th>
+                                    <th style="padding: 8px 12px; text-align: right;">🚴 Delivery</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${c.pedidos.map(p => `
+                                    <tr style="background: white; border-bottom: 1px solid #e5e7eb;">
+                                        <td style="padding: 8px 12px; font-weight: 500;">#${p.id}</td>
+                                        <td style="padding: 8px 12px;">${p.hora_entrega}</td>
+                                        <td style="padding: 8px 12px; text-align: right; color: #dc2626; font-weight: 500;">${formatearMoneda(p.efectivo)}</td>
+                                        <td style="padding: 8px 12px; text-align: right; color: #16a34a; font-weight: 500;">${formatearMoneda(p.delivery)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #d1d5db; font-size: 0.875rem; display: flex; justify-content: flex-end; gap: 24px;">
+                        <span style="color: #4b5563; font-weight: 500;">Subtotal:</span>
+                        <span style="color: #dc2626; font-weight: 600;">Ef: ${formatearMoneda(c.subtotal_efectivo)}</span>
+                        <span style="color: #16a34a; font-weight: 600;">Del: ${formatearMoneda(c.subtotal_delivery)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        document.getElementById('liq-total-efectivo').textContent = formatearMoneda(dataLiq.totales.efectivo);
+        document.getElementById('liq-total-delivery').textContent = formatearMoneda(dataLiq.totales.delivery);
+        const saldoEl = document.getElementById('liq-total-saldo');
+        const saldo = dataLiq.totales.saldo;
+        saldoEl.textContent = (saldo < 0 ? '- ' : '+ ') + formatearMoneda(Math.abs(saldo));
+        saldoEl.style.color = saldo >= 0 ? '#166534' : '#991b1b';
+
+    } catch (err) {
+        console.error(err);
+        body.innerHTML = '<p style="color: #dc2626; text-align: center; padding: 32px 0;">Error al cargar el detalle.</p>';
+    }
+}
+
+function cerrarModalLiquidacion() {
+    document.getElementById('modal-liquidacion').style.display = 'none';
+}
