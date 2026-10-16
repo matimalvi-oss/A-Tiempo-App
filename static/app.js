@@ -124,7 +124,7 @@ function createOrderCard(pedido) {
     `;
 
     const ahora = new Date();
-    const fechaRetiro = pedido.hora_estimada_retiro ? new Date(pedido.hora_estimada_retiro + 'Z') : new Date();
+    const fechaRetiro = pedido.hora_estimada_retiro ? new Date(pedido.hora_estimada_retiro) : new Date();
     const esDemorado = (pedido.estado === 'pendiente') && ahora > fechaRetiro;
     if (esDemorado) card.classList.add('alerta-demora');
 

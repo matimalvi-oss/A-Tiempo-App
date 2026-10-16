@@ -130,7 +130,7 @@ def crear_pedido(req: CreateOrderRequest):
     else:
         cursor.execute("INSERT INTO clientes (nombre, telefono) VALUES (%s, %s)", 
                       (req.cliente_nombre, req.cliente_telefono))
-        cliente_id = cursor.lastrowid
+        cliente_id = cursor.fetchone()['id']
     
     cursor.execute("SELECT direccion FROM comercios WHERE id = %s", (req.comercio_id,))
     comercio = cursor.fetchone()
@@ -151,7 +151,7 @@ def crear_pedido(req: CreateOrderRequest):
           req.monto_a_cobrar, req.costo_delivery, int(req.pagado), ahora, hora_estimada))
     
     conn.commit()
-    pedido_id = cursor.lastrowid
+    pedido_id = cursor.fetchone()['id']
     conn.close()
     
     return {"message": "Pedido creado", "pedido_id": pedido_id}
@@ -222,7 +222,7 @@ def crear_comercio(req: CreateComercioRequest):
                   (req.nombre, req.direccion, req.telefono))
     
     conn.commit()
-    comercio_id = cursor.lastrowid
+    comercio_id = cursor.fetchone()['id']
     conn.close()
     
     return {"message": "Comercio creado", "comercio_id": comercio_id}
@@ -290,7 +290,7 @@ def crear_rider(req: CreateRiderRequest):
                   (req.nombre, req.telefono, req.vehiculo))
     
     conn.commit()
-    rider_id = cursor.lastrowid
+    rider_id = cursor.fetchone()['id']
     conn.close()
     
     return {"message": "Rider creado", "rider_id": rider_id}
