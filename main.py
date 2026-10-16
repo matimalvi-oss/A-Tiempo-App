@@ -103,7 +103,7 @@ def get_dashboard_data():
     cursor.execute("SELECT * FROM riders")
     riders = rows_to_list(cursor.fetchall())
     
-    cursor.execute("SELECT * FROM pedidos ORDER BY hora_pedido DESC")
+    cursor.execute("SELECT * FROM pedidos ORDER BY hora_pedido DESC LIMIT 200")
     pedidos = rows_to_list(cursor.fetchall())
     
     conn.close()
@@ -122,39 +122,58 @@ def crear_pedido(req: CreateOrderRequest):
     conn = get_db()
     cursor = conn.cursor()
     
-    cursor.execute("SELECT id FROM clientes WHERE telefono = %s", (req.cliente_telefono,))
-    cliente = cursor.fetchone()
-    
-    if cliente:
-        cliente_id = cliente['id']
-    else:
-        cursor.execute("INSERT INTO clientes (nombre, telefono) VALUES (%s, %s)", 
-                      (req.cliente_nombre, req.cliente_telefono))
-        cliente_id = cursor.fetchone()['id']
-    
-    cursor.execute("SELECT direccion FROM comercios WHERE id = %s", (req.comercio_id,))
-    comercio = cursor.fetchone()
-    
-    if not comercio:
+    try:
+        cursor.execute("SELECT id FROM clientes WHERE telefono = %s", (req.cliente_telefono,))
+        cliente = cursor.fetchone()
+        
+        if cliente:
+            cliente_id = cliente['id']
+        else:
+            cursor.execute("INSERT INTO clientes (nombre, telefono) VALUES (%s, %s)", 
+                          (req.cliente_nombre, req.cliente_telefono))
+            cliente_result = cursor.fetchone()  # <-- AGREGAR RETURNING ID AQUÍ TAMBIÉN
+            if cliente_result:
+                cliente_id = cliente_result['id']
+            else:
+                # Si no hay RETURNING, usamos lastval()
+                cursor.execute("SELECT lastval()")
+                cliente_id = cursor.fetchone()['id']
+        
+        cursor.execute("SELECT direccion FROM comercios WHERE id = %s", (req.comercio_id,))
+        comercio = cursor.fetchone()
+        
+        if not comercio:
+            raise HTTPException(404, "Comercio no encontrado")
+        
+        ahora = datetime.now()
+        hora_estimada = ahora + timedelta(minutes=20)
+        
+        cursor.execute('''
+            INSERT INTO pedidos 
+            (comercio_id, cliente_id, rider_id, direccion_recogida, direccion_entrega, estado, 
+             monto_a_cobrar, costo_delivery, pagado, hora_pedido, hora_estimada_retiro)
+            VALUES (%s, %s, NULL, %s, %s, 'pendiente', %s, %s, %s, %s, %s)
+            RETURNING id
+        ''', (req.comercio_id, cliente_id, comercio['direccion'], req.direccion_entrega,
+              req.monto_a_cobrar, req.costo_delivery, int(req.pagado), ahora, hora_estimada))
+        
+        result = cursor.fetchone()
+        conn.commit()
+        
+        if result:
+            pedido_id = result['id']
+            print(f"✅ Pedido creado con ID: {pedido_id}")
+            return {"message": "Pedido creado", "pedido_id": pedido_id}
+        else:
+            raise HTTPException(500, "No se pudo crear el pedido")
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        print(f"❌ Error al crear pedido: {e}")
+        raise HTTPException(500, f"Error al crear pedido: {str(e)}")
+    finally:
         conn.close()
-        raise HTTPException(404, "Comercio no encontrado")
-    
-    ahora = datetime.now()
-    hora_estimada = ahora + timedelta(minutes=20)
-    
-    cursor.execute('''
-        INSERT INTO pedidos 
-        (comercio_id, cliente_id, rider_id, direccion_recogida, direccion_entrega, estado, 
-         monto_a_cobrar, costo_delivery, pagado, hora_pedido, hora_estimada_retiro)
-        VALUES (%s, %s, NULL, %s, %s, 'pendiente', %s, %s, %s, %s, %s)
-    ''', (req.comercio_id, cliente_id, comercio['direccion'], req.direccion_entrega,
-          req.monto_a_cobrar, req.costo_delivery, int(req.pagado), ahora, hora_estimada))
-    
-    conn.commit()
-    pedido_id = cursor.fetchone()['id']
-    conn.close()
-    
-    return {"message": "Pedido creado", "pedido_id": pedido_id}
 
 @app.post("/api/pedidos/{pedido_id}/asignar")
 def asignar_rider(pedido_id: int, req: AssignRiderRequest):
@@ -218,14 +237,27 @@ def crear_comercio(req: CreateComercioRequest):
     conn = get_db()
     cursor = conn.cursor()
     
-    cursor.execute("INSERT INTO comercios (nombre, direccion, telefono) VALUES (%s, %s, %s)",
-                  (req.nombre, req.direccion, req.telefono))
-    
-    conn.commit()
-    comercio_id = cursor.fetchone()['id']
-    conn.close()
-    
-    return {"message": "Comercio creado", "comercio_id": comercio_id}
+    try:
+        cursor.execute(
+            "INSERT INTO comercios (nombre, direccion, telefono) VALUES (%s, %s, %s) RETURNING id",
+            (req.nombre, req.direccion, req.telefono)
+        )
+        result = cursor.fetchone()  # Guardamos el resultado PRIMERO
+        conn.commit()
+        
+        if result:
+            comercio_id = result['id']
+            print(f"✅ Comercio creado con ID: {comercio_id}")
+            return {"message": "Comercio creado", "comercio_id": comercio_id}
+        else:
+            print("❌ No se obtuvo ID del comercio")
+            raise HTTPException(500, "No se pudo obtener el ID del comercio")
+    except Exception as e:
+        conn.rollback()
+        print(f" Error al crear comercio: {e}")
+        raise HTTPException(500, f"Error al crear comercio: {str(e)}")
+    finally:
+        conn.close()
 
 @app.put("/api/comercios/{comercio_id}")
 def actualizar_comercio(comercio_id: int, req: UpdateComercioRequest):
@@ -286,14 +318,27 @@ def crear_rider(req: CreateRiderRequest):
     conn = get_db()
     cursor = conn.cursor()
     
-    cursor.execute("INSERT INTO riders (nombre, telefono, vehiculo, estado) VALUES (%s, %s, %s, 'disponible')",
-                  (req.nombre, req.telefono, req.vehiculo))
-    
-    conn.commit()
-    rider_id = cursor.fetchone()['id']
-    conn.close()
-    
-    return {"message": "Rider creado", "rider_id": rider_id}
+    try:
+        cursor.execute(
+            "INSERT INTO riders (nombre, telefono, vehiculo, estado) VALUES (%s, %s, %s, 'disponible') RETURNING id",
+            (req.nombre, req.telefono, req.vehiculo)
+        )
+        result = cursor.fetchone()
+        conn.commit()
+        
+        if result:
+            rider_id = result['id']
+            print(f"✅ Rider creado con ID: {rider_id}")
+            return {"message": "Rider creado", "rider_id": rider_id}
+        else:
+            print("❌ No se obtuvo ID del rider")
+            raise HTTPException(500, "No se pudo obtener el ID del rider")
+    except Exception as e:
+        conn.rollback()
+        print(f"❌ Error al crear rider: {e}")
+        raise HTTPException(500, f"Error al crear rider: {str(e)}")
+    finally:
+        conn.close()
 
 @app.put("/api/riders/{rider_id}")
 def actualizar_rider(rider_id: int, req: UpdateRiderRequest):
