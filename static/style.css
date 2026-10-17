@@ -179,3 +179,52 @@ body { background: var(--bg); color: var(--text-main); display: flex; flex-direc
 #vista-liquidaciones::-webkit-scrollbar-thumb:hover {
     background: #64748b;
 }
+
+/* Header con botón de toggle */
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+#btn-toggle-sidebar {
+    background: white !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 6px !important;
+    padding: 6px 10px !important;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    color: #374151;
+}
+
+#btn-toggle-sidebar:hover {
+    background: #f3f4f6 !important;
+    border-color: #d1d5db !important;
+}
+
+/* Container flexible */
+.container {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+/* Sidebar con transición suave */
+.sidebar {
+    width: 300px;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+/* Contenido principal expansible */
+.kanban-board,
+#vista-liquidaciones {
+    flex: 1;
+    min-width: 0;
+}

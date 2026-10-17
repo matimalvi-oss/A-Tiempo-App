@@ -18,6 +18,9 @@
             </div>
         </div>
         <div class="header-right">
+            <button id="btn-toggle-sidebar" onclick="toggleSidebar()" style="position: fixed; right: 20px; top: 80px; z-index: 100; background: #3b82f6; color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: all 0.3s ease;">
+        ◀
+            </button>
             <select id="filter-comercio" class="select-filter">
                 <option value="todos">Todos los Comercios</option>
             </select>
@@ -43,12 +46,12 @@
     </button>
 </div>
 
-<div class="container">
+<div class="container" style="display: flex; gap: 20px; align-items: flex-start; transition: all 0.3s ease;">
     <!-- Vista Pedidos (Kanban) - ID original mantenido -->
-    <main class="kanban-board" id="kanban-board"></main>
+    <main class="kanban-board" id="kanban-board" style="flex: 1; min-width: 0;"></main>
 
     <!-- Vista Liquidaciones (Oculta por defecto) -->
-    <div id="vista-liquidaciones" style="display: none; width: 100%; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-height: calc(100vh - 180px); overflow-y: auto;">
+    <div id="vista-liquidaciones" style="display: none; flex: 1; min-width: 0; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-height: calc(100vh - 180px); overflow-y: auto;">
         <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px;">
             <h2 style="margin: 0; font-size: 1.5rem; font-weight: bold;">💰 Liquidación de Riders</h2>
             <div style="display: flex; gap: 10px; align-items: center; background: #f9fafb; padding: 8px; border-radius: 6px; border: 1px solid #e5e7eb;">
@@ -77,10 +80,7 @@
     </div>
 
     <!-- Sidebar (se mantiene igual) -->
-    <button id="btn-toggle-sidebar" onclick="toggleSidebar()" style="position: fixed; right: 20px; top: 80px; z-index: 100; background: #3b82f6; color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: all 0.3s ease;">
-        ◀
-    </button>
-    <aside class="sidebar" id="sidebar">
+    <aside class="sidebar" id="sidebar" style="width: 300px; flex-shrink: 0; transition: all 0.3s ease;">
         <div class="sidebar-header">
             <h2><i data-lucide="users"></i> Riders</h2>
             <button class="btn-icon" id="btn-add-rider" title="Agregar Rider">

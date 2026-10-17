@@ -828,23 +828,22 @@ async function cargarResumenLocales(desde, hasta) {
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     const btn = document.getElementById('btn-toggle-sidebar');
-    const container = document.querySelector('.container');
+    
+    if (!sidebar || !btn) return;
     
     if (sidebar.style.display === 'none') {
         // Mostrar sidebar
         sidebar.style.display = 'block';
-        btn.innerHTML = '◀';
-        btn.style.right = '20px';
-        container.style.marginRight = '0';
+        btn.innerHTML = '<i data-lucide="panel-right-close" style="width: 18px; height: 18px;"></i>';
         localStorage.setItem('sidebarVisible', 'true');
     } else {
         // Ocultar sidebar
         sidebar.style.display = 'none';
-        btn.innerHTML = '▶';
-        btn.style.right = '20px';
-        container.style.marginRight = '0';
+        btn.innerHTML = '<i data-lucide="panel-right-open" style="width: 18px; height: 18px;"></i>';
         localStorage.setItem('sidebarVisible', 'false');
     }
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 // Restaurar estado del sidebar al cargar la página
@@ -855,7 +854,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const btn = document.getElementById('btn-toggle-sidebar');
         if (sidebar) sidebar.style.display = 'none';
         if (btn) {
-            btn.innerHTML = '▶';
+            btn.innerHTML = '<i data-lucide="panel-right-open" style="width: 18px; height: 18px;"></i>';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
     }
 });
