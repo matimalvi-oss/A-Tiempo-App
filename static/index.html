@@ -39,19 +39,22 @@
 <!-- Navegación de Vistas -->
 <div style="display: flex; gap: 10px; padding: 1px; background: #f3f4f6; border-radius: 8px;">
     
-    <button onclick="mostrarVista('pedidos')" id="btn-vista-pedidos" style="padding: 16px 36px;background: none;border-left: 1px #000000;border-right: 1px black;border-bottom: none;border-top: none; cursor: pointer;font-weight: 600; font-size:large">
+    <button onclick="mostrarVista('pedidos')" id="btn-vista-pedidos" style="padding: 16px 36px;background: none;border-left: 1px #000000;border-right: 1px black;border-bottom: none;border-top: none; cursor: pointer;font-weight: 400; font-size:large">
         📋 Pedidos
     </button>
 
-    <button onclick="mostrarVista('liquidaciones')" id="btn-vista-liquidaciones" style="padding: 16px 36px;background: none;border-left: 1px #000000;border-right: 1px black;border-bottom: none;border-top: none; cursor: pointer;font-weight: 600; font-size:large;">
+    <button onclick="mostrarVista('liquidaciones')" id="btn-vista-liquidaciones" style="padding: 16px 36px;background: none;border-left: 1px #000000;border-right: 1px black;border-bottom: none;border-top: none; cursor: pointer;font-weight: 400; font-size:large;">
         💰 Liquidaciones
     </button>
 </div>
 
 <div class="container" style="display: flex; gap: 20px; align-items: flex-start; transition: all 0.3s ease;">
     <!-- Vista Pedidos (Kanban) - ID original mantenido -->
-    <main class="kanban-board" id="kanban-board" style="flex: 1; min-width: 0;"></main>
+    <main class="kanban-board" id="kanban-board" style="flex: auto;min-width: 0px;display: flex;overflow-x: auto;overflow-y: auto;flex-direction: row;"></main>
 
+
+
+    
     <!-- Vista Liquidaciones (Oculta por defecto) -->
     <div id="vista-liquidaciones" style="display: none; flex: 1; min-width: 0; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-height: calc(100vh - 180px); overflow-y: auto;">
         <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px;">
@@ -82,7 +85,7 @@
     </div>
 
     <!-- Sidebar (se mantiene igual) -->
-    <aside class="sidebar" id="sidebar" style="width: 300px; flex-shrink: 0; display: block;background: #f3f4f6; ">
+    <aside class="sidebar" id="sidebar" style="width: 300px; flex-shrink: 0; display: block;background: #f3f4f6; overflow-y: auto; ">
         <div class="sidebar-header">
             <h2><i data-lucide="users"></i> Riders</h2>
             <button class="btn-icon" id="btn-add-rider" title="Agregar Rider">
@@ -93,7 +96,7 @@
             <i data-lucide="map-pin"></i>
             <p>Mapa en tiempo real</p>
         </div>
-        <div class="riders-list" id="riders-list" style="max-height: 300px; overflow-y: auto;"></div>
+        <div class="riders-list" id="riders-list" style="max-height: 300px;"></div>
         
         <div class="sidebar-section">
             <div class="sidebar-header">
