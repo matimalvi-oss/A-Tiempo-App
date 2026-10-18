@@ -837,7 +837,7 @@ function toggleSidebar() {
 
     if (isMobile) {
         // Comportamiento movil: drawer lateral
-        sidebar.classList.toggle = ('visible');
+        sidebar.classList.toggle('visible');
         overlay.style.display = sidebar.classList.contains('visible') ? 'block' : 'none';
         if (btnClose) btnClose.style.display = sidebar.classList.contains('visible') ? 'block' : 'none';
     } else {

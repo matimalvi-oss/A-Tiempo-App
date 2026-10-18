@@ -368,3 +368,29 @@ body { background: var(--bg); color: var(--text-main); display: flex; flex-direc
         min-width: 260px;
     }
 }
+
+/* ==========================================
+   FIX: SCROLL HORIZONTAL KANBAN EN MÓVIL
+   ========================================== */
+@media (max-width: 768px) {
+    .kanban-board {
+        display: flex !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important; /* Suaviza el scroll en iOS */
+        gap: 12px !important;
+        padding-bottom: 15px !important;
+        width: 100% !important;
+        touch-action: pan-x !important; /* Permite deslizar solo horizontalmente */
+    }
+
+    .kanban-column {
+        min-width: 280px !important;
+        max-width: 280px !important;
+        flex-shrink: 0 !important; /* Evita que las columnas se aplasten */
+    }
+    
+    /* Asegurar que el contenedor no bloquee el scroll */
+    .container {
+        overflow-x: visible !important;
+    }
+}
