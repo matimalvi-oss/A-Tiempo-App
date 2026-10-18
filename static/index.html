@@ -18,7 +18,7 @@
             </div>
         </div>
         <div class="header-right">
-            <button id="btn-toggle-sidebar" onclick="toggleSidebar()" style="position: fixed; right: 20px; top: 80px; z-index: 100; background: #3b82f6; color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: all 0.3s ease;">
+            <button id="btn-toggle-sidebar" onclick="toggleSidebar()" style="position: fixed; right: 20px; top: 80px; z-index: 100; background: #3b82f6; color: black; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: all 0.3s ease;">
         ◀
             </button>
             <select id="filter-comercio" class="select-filter">
@@ -80,7 +80,7 @@
     </div>
 
     <!-- Sidebar (se mantiene igual) -->
-    <aside class="sidebar" id="sidebar" style="width: 300px; flex-shrink: 0; transition: all 0.3s ease;">
+    <aside class="sidebar" id="sidebar" style="width: 300px; flex-shrink: 0; display: block;background: #f3f4f6; ">
         <div class="sidebar-header">
             <h2><i data-lucide="users"></i> Riders</h2>
             <button class="btn-icon" id="btn-add-rider" title="Agregar Rider">
@@ -91,7 +91,7 @@
             <i data-lucide="map-pin"></i>
             <p>Mapa en tiempo real</p>
         </div>
-        <div class="riders-list" id="riders-list"></div>
+        <div class="riders-list" id="riders-list" style="max-height: 300px; overflow-y: auto;"></div>
         
         <div class="sidebar-section">
             <div class="sidebar-header">
@@ -100,7 +100,7 @@
                     <i data-lucide="plus-circle" size="18"></i>
                 </button>
             </div>
-            <div class="comercios-list" id="comercios-list"></div>
+            <div class="comercios-list" id="comercios-list" style="max-height: 300px; overflow-y: auto;"></div>
         </div>
     </aside>
 </div>
