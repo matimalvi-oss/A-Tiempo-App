@@ -827,20 +827,31 @@ async function cargarResumenLocales(desde, hasta) {
 
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
     const btn = document.getElementById('btn-toggle-sidebar');
+    const btnClose = document.querySelector('.btn-close-sidebar');
     
     if (!sidebar || !btn) return;
     
-    if (sidebar.style.display === 'none') {
-        // Mostrar sidebar
-        sidebar.style.display = 'block';
-        btn.innerHTML = '<i data-lucide="panel-right-close" style="width: 18px; height: 18px;"></i>';
-        localStorage.setItem('sidebarVisible', 'true');
+    const isMobile = window.innerWidth <= 768;
+
+    if (isMobile) {
+        // Comportamiento movil: drawer lateral
+        sidebar.classList.toggle = ('visible');
+        overlay.style.display = sidebar.classList.contains('visible') ? 'block' : 'none';
+        if (btnClose) btnClose.style.display = sidebar.classList.contains('visible') ? 'block' : 'none';
     } else {
+        // Comportamiento escritorio: ocultar/mostrar
+        if(sidebar.style.display === 'none') {
+            sidebar.style.display = 'block';
+            btn.innerHTML = '<i data-lucide="panel-right-close" style="width: 18px; height: 18px;"></i>';
+            localStorage.setItem('sidebarVisible', 'true');
+        } else {
         // Ocultar sidebar
         sidebar.style.display = 'none';
         btn.innerHTML = '<i data-lucide="panel-right-open" style="width: 18px; height: 18px;"></i>';
         localStorage.setItem('sidebarVisible', 'false');
+        }
     }
     
     if (typeof lucide !== 'undefined') lucide.createIcons();
