@@ -257,8 +257,7 @@ body { background: var(--bg); color: var(--text-main); display: flex; flex-direc
         gap: 8px !important;
     }
     
-    .header-right button,
-    .header-right select {
+    #btn-toggle-sidebar {
         width: auto;
         min-width: 44px;
         font-size: 0.9rem;
