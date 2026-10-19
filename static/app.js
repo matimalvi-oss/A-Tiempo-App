@@ -645,7 +645,7 @@ function mostrarVista(vista) {
         
         console.log('Vista liquidaciones activada'); // DEBUG
     }
-    
+
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
@@ -863,6 +863,7 @@ function toggleSidebar() {
     if (isMobile) {
         // Comportamiento movil: drawer lateral
         sidebar.classList.toggle('visible');
+        btn.innerHTML = '<i data-lucide="panel-right-close" style="width: 18px; height: 18px;"></i>';
         overlay.style.display = sidebar.classList.contains('visible') ? 'block' : 'none';
         if (btnClose) btnClose.style.display = sidebar.classList.contains('visible') ? 'block' : 'none';
     } else {
