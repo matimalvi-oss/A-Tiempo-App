@@ -898,7 +898,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 //Mostrar u ocultar header al scrollear (solo en movil)
 const header = document.querySelector('.header');
-const scrollContainer = document.querySelector('.container'); // o .kanban-board si ese es el que scrollea
+const scrollContainer = document.querySelector('.kanban-board'); // o .container si ese es el que scrollea
 
 let lastScrollTop = 0;
 
