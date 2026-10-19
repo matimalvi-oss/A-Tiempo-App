@@ -239,8 +239,16 @@ body { background: var(--bg); color: var(--text-main); display: flex; flex-direc
         flex-direction: column;
         gap: 8px !important;
         padding: 10px !important;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        transition: transform 0.25s ease;
     }
     
+    .header.hidden {
+  transform: translateY(-100%);
+    }
+
     .header-left h1 {
         font-size: 1rem !important;
     }
@@ -373,6 +381,18 @@ body { background: var(--bg); color: var(--text-main); display: flex; flex-direc
    ========================================== */
 
 @media (max-width: 480px) {
+
+    .header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  transition: transform 0.25s ease;
+    }
+
+    .header.hidden {
+  transform: translateY(-100%);
+    }
+
     .header-right {
         flex-direction: column;
         width: 100%;

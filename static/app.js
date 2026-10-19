@@ -895,3 +895,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
+//Mostrar u ocultar header al scrollear (solo en movil)
+const header = document.querySelector('.header');
+const scrollContainer = document.querySelector('.container'); // o .kanban-board si ese es el que scrollea
+
+let lastScrollTop = 0;
+
+function handleHeaderScroll() {
+  if (window.innerWidth > 768) return;
+
+  const current = scrollContainer ? scrollContainer.scrollTop : window.scrollY;
+
+  if (current > lastScrollTop && current > 40) {
+    header.classList.add('hidden');
+  } else {
+    header.classList.remove('hidden');
+  }
+
+  lastScrollTop = current;
+}
+
+if (scrollContainer) {
+  scrollContainer.addEventListener('scroll', handleHeaderScroll, { passive: true });
+} else {
+  window.addEventListener('scroll', handleHeaderScroll, { passive: true });
+}
+
+if (current > lastScrollTop && current > 40) {
+  header.classList.add('header-hidden');
+} else {
+  header.classList.remove('header-hidden');
+}
