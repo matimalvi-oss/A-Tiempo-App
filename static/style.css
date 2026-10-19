@@ -259,9 +259,12 @@ body { background: var(--bg); color: var(--text-main); display: flex; flex-direc
     
     .header-right button,
     .header-right select {
-        width: 100% !important;
-        font-size: 0.9rem !important;
-        padding: 8px 12px !important;
+        width: auto;
+        min-width: 44px;
+        font-size: 0.9rem;
+        padding: 8px 12px;
+        margin-left: auto; /* Empuja el botón a la derecha */
+        flex-shrink: 0; /* Evita que el botón se reduzca demasiado */
     }
     
     /* Botones de navegación full-width */
@@ -279,7 +282,7 @@ body { background: var(--bg); color: var(--text-main); display: flex; flex-direc
         gap: 10px;
     }
     
-    #btn-toggle-sidebar{
+    .btn-toggle-sidebar{
         width:auto;
         min-width: 40px;
         padding: 10px 14px;
@@ -378,7 +381,11 @@ body { background: var(--bg); color: var(--text-main); display: flex; flex-direc
     
     .header-right button,
     .header-right select {
-        width: 100%;
+        width: auto;
+        min-width: 44px !important;
+        padding: 10px 14px !important;
+        margin-left: auto !important; /* Empuja el botón a la derecha */
+        flex-shrink: 0 !important;
     }
     
     .kanban-column {
