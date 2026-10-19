@@ -599,28 +599,53 @@ function mostrarVista(vista) {
     const btnPedidos = document.getElementById('btn-vista-pedidos');
     const btnLiquidaciones = document.getElementById('btn-vista-liquidaciones');
 
-    if (vista === 'pedidos') {
-        kanban.style.display = 'block';
-        liquidaciones.style.display = 'none';
-        btnPedidos.style.background = '#3b82f6';
-        btnPedidos.style.color = 'white';
-        btnLiquidaciones.style.background = 'white';
-        btnLiquidaciones.style.color = '#374151';
+    console.log(`Cambiando a vista: ${vista}`); // DEBUG
+
+        if (vista === 'pedidos') {
+        if (kanban) kanban.style.display = 'block';
+        if (liquidaciones) liquidaciones.style.display = 'none';
+        
+        // Pedidos activo (azul)
+        if (btnPedidos) {
+            btnPedidos.style.background = '#3b82f6';
+            btnPedidos.style.color = 'white';
+        }
+        
+        // Liquidaciones inactivo (blanco)
+        if (btnLiquidaciones) {
+            btnLiquidaciones.style.background = 'white';
+            btnLiquidaciones.style.color = '#374151';
+        }
+        
     } else if (vista === 'liquidaciones') {
-        kanban.style.display = 'none';
-        liquidaciones.style.display = 'block';
-        btnPedidos.style.background = 'white';
-        btnPedidos.style.color = '#374151';
-        btnLiquidaciones.style.background = '#3b82f6';
-        btnLiquidaciones.style.color = 'white';
+        if (kanban) kanban.style.display = 'none';
+        if (liquidaciones) liquidaciones.style.display = 'block';
+        
+        // Pedidos inactivo (blanco)
+        if (btnPedidos) {
+            btnPedidos.style.background = 'white';
+            btnPedidos.style.color = '#374151';
+        }
+        
+        // Liquidaciones activo (azul)
+        if (btnLiquidaciones) {
+            btnLiquidaciones.style.background = '#3b82f6';
+            btnLiquidaciones.style.color = 'white';
+        }
         
         // Inicializar fechas por defecto (últimos 30 días)
         const hoy = new Date();
         const hace30 = new Date();
         hace30.setDate(hoy.getDate() - 30);
-        document.getElementById('liq-hasta').value = hoy.toISOString().split('T')[0];
-        document.getElementById('liq-desde').value = hace30.toISOString().split('T')[0];
+        
+        const inputHasta = document.getElementById('liq-hasta');
+        const inputDesde = document.getElementById('liq-desde');
+        if (inputHasta) inputHasta.value = hoy.toISOString().split('T')[0];
+        if (inputDesde) inputDesde.value = hace30.toISOString().split('T')[0];
+        
+        console.log('Vista liquidaciones activada'); // DEBUG
     }
+    
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 

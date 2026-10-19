@@ -237,36 +237,39 @@ body { background: var(--bg); color: var(--text-main); display: flex; flex-direc
     /* Header compacto */
     .header {
         flex-direction: column;
-        gap: 10px;
-        padding: 10px;
+        gap: 8px !important;
+        padding: 10px !important;
     }
     
     .header-left h1 {
-        font-size: 1.1rem;
+        font-size: 1rem !important;
     }
     
     .metrics {
-        display: none; /* Ocultar métricas en mobile */
+        display: none !important; /* Ocultar métricas en mobile */
     }
     
     .header-right {
-        width: 100%;
+        flex-direction: column !important;
+        width: 100% !important;
         justify-content: space-between;
         flex-wrap: wrap;
-        gap: 8px;
+        gap: 8px !important;
     }
     
     .header-right button,
     .header-right select {
-        font-size: 0.85rem;
-        padding: 8px 12px;
+        width: 100% !important;
+        font-size: 0.9rem !important;
+        padding: 8px 12px !important;
     }
     
     /* Botones de navegación full-width */
     #btn-vista-pedidos,
     #btn-vista-liquidaciones {
         flex: 1;
-        padding: 12px 16px;
+        padding: 10px 16px !important;
+        font-size: 0.9rem !important;
     }
     
     /* Container en columna */
@@ -278,27 +281,32 @@ body { background: var(--bg); color: var(--text-main); display: flex; flex-direc
     
     /* Sidebar oculto por defecto en mobile */
     .sidebar {
-        width: 100%;
-        position: fixed;
-        top: 0;
-        right: -100%;
-        height: 100vh;
-        z-index: 1000;
-        background: white;
-        box-shadow: -2px 0 10px rgba(0,0,0,0.1);
-        transition: right 0.3s ease;
-        overflow-y: auto;
-        padding: 20px;
+        width: 85% !important;
+        max-width: 300px !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important; /* iOS smooth scroll */
+        padding-bottom: 40px !important; /* Espacio extra al final */
+        position: fixed !important;
+        top: 0 !important;
+        right: -100% !important;
+        z-index: 1000 !important;
+        background: white !important;
+        box-shadow: -2px 0 10px rgba(0,0,0,0.1) !important;
+        transition: right 0.3s ease !important;
     }
     
     .sidebar.visible {
-        right: 0;
+        right: 0 !important;
     }
     
     /* Kanban con scroll horizontal */
     .kanban-board {
         display: flex;
         overflow-x: auto;
+        overflow-y: auto;
         gap: 10px;
         padding-bottom: 10px;
         min-width: 100%;
