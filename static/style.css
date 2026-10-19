@@ -396,23 +396,27 @@ body { background: var(--bg); color: var(--text-main); display: flex; flex-direc
    ========================================== */
 @media (max-width: 768px) {
     .kanban-board {
-        display: flex !important;
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch !important; /* Suaviza el scroll en iOS */
-        gap: 12px !important;
-        padding-bottom: 15px !important;
-        width: 100% !important;
-        touch-action: pan-x !important; /* Permite deslizar solo horizontalmente */
+        display: flex;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch; /* Suaviza el scroll en iOS */
+        gap: 12px;
+        padding-bottom: 15px;
+        width: 100%;
+        touch-action: pan-x; /* Permite deslizar solo horizontalmente */
+    }
+
+    #kanban-board[style*="display: none"] {
+        display: none !important;
     }
 
     .kanban-column {
-        min-width: 280px !important;
-        max-width: 280px !important;
-        flex-shrink: 0 !important; /* Evita que las columnas se aplasten */
+        min-width: 280px;
+        max-width: 280px;
+        flex-shrink: 0; /* Evita que las columnas se aplasten */
     }
     
     /* Asegurar que el contenedor no bloquee el scroll */
     .container {
-        overflow-x: visible !important;
+        overflow-x: visible;
     }
 }
