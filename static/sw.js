@@ -1,5 +1,5 @@
 // sw.js - Service Worker para PWA
-const CACHE_NAME = 'delivery-app-v2';
+const CACHE_NAME = 'delivery-app-v3';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -15,6 +15,7 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(urlsToCache))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -29,12 +30,17 @@ self.addEventListener('activate', event => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
 });
 
 // Fetch: sirve desde caché, si falla va a la red
 self.addEventListener('fetch', event => {
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.origin !== self.location.origin || requestUrl.pathname.startsWith('/api/')) {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then(response => {
