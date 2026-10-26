@@ -49,8 +49,8 @@ class UpdateStatusRequest(BaseModel):
 
 class CreateOrderRequest(BaseModel):
     comercio_id: int
-    cliente_nombre: str
-    cliente_telefono: str
+    cliente_nombre: Optional[str] = None
+    cliente_telefono: Optional[str] = None
     direccion_entrega: str
     monto_a_cobrar: float = 0.0
     costo_delivery: float = 0.0
@@ -123,16 +123,21 @@ def crear_pedido(req: CreateOrderRequest):
     cursor = conn.cursor()
     
     try:
-        # 1. Buscar o crear cliente
-        cursor.execute("SELECT id FROM clientes WHERE telefono = %s", (req.cliente_telefono,))
-        cliente = cursor.fetchone()
-        
-        if cliente:
-            cliente_id = cliente['id']
-        else:
-            # AGREGAMOS "RETURNING id" AQUÍ
-            cursor.execute("INSERT INTO clientes (nombre, telefono) VALUES (%s, %s) RETURNING id", 
-                          (req.cliente_nombre, req.cliente_telefono))
+        cliente_nombre = (req.cliente_nombre or "").strip()
+        cliente_telefono = (req.cliente_telefono or "").strip() or None
+        cliente_id = None
+
+        if cliente_telefono:
+            cursor.execute("SELECT id FROM clientes WHERE telefono = %s", (cliente_telefono,))
+            cliente = cursor.fetchone()
+            if cliente:
+                cliente_id = cliente['id']
+
+        if cliente_id is None and (cliente_nombre or cliente_telefono):
+            cursor.execute(
+                "INSERT INTO clientes (nombre, telefono) VALUES (%s, %s) RETURNING id",
+                (cliente_nombre or "Sin nombre", cliente_telefono)
+            )
             cliente_id = cursor.fetchone()['id']
         
         # 2. Obtener dirección del comercio
@@ -406,8 +411,33 @@ def actualizar_pedido(pedido_id: int, req: UpdateOrderRequest):
     params = []
     
     if req.cliente_nombre is not None or req.cliente_telefono is not None:
-        cursor.execute("UPDATE clientes SET nombre = COALESCE(%s, nombre), telefono = COALESCE(%s, telefono) WHERE id = %s", 
-                      (req.cliente_nombre, req.cliente_telefono, pedido['cliente_id']))
+        cliente_nombre = (req.cliente_nombre or "").strip()
+        cliente_telefono = (req.cliente_telefono or "").strip() or None
+
+        if pedido['cliente_id'] is None:
+            cliente = None
+            if cliente_telefono:
+                cursor.execute("SELECT id FROM clientes WHERE telefono = %s", (cliente_telefono,))
+                cliente = cursor.fetchone()
+
+            if cliente:
+                cliente_id = cliente['id']
+            elif cliente_nombre or cliente_telefono:
+                cursor.execute(
+                    "INSERT INTO clientes (nombre, telefono) VALUES (%s, %s) RETURNING id",
+                    (cliente_nombre or "Sin nombre", cliente_telefono)
+                )
+                cliente_id = cursor.fetchone()['id']
+            else:
+                cliente_id = None
+
+            if cliente_id is not None:
+                cursor.execute("UPDATE pedidos SET cliente_id = %s WHERE id = %s", (cliente_id, pedido_id))
+        else:
+            cursor.execute(
+                "UPDATE clientes SET nombre = COALESCE(NULLIF(%s, ''), nombre), telefono = %s WHERE id = %s",
+                (cliente_nombre, cliente_telefono, pedido['cliente_id'])
+            )
     
     if req.direccion_entrega is not None:
         updates.append("direccion_entrega = %s")

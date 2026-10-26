@@ -33,9 +33,10 @@ def init_db():
             CREATE TABLE IF NOT EXISTS clientes (
                 id SERIAL PRIMARY KEY,
                 nombre VARCHAR(100) NOT NULL,
-                telefono VARCHAR(50) UNIQUE NOT NULL
+                telefono VARCHAR(50) UNIQUE
             )
         """)
+        cursor.execute("ALTER TABLE clientes ALTER COLUMN telefono DROP NOT NULL")
         
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS riders (

@@ -104,7 +104,7 @@ function createOrderCard(pedido) {
     const cliente = data.clientes.find(c => c.id === pedido.cliente_id);
     const rider = pedido.rider_id ? data.riders.find(r => r.id === pedido.rider_id) : null;
 
-    if (!comercio || !cliente) return document.createElement('div');
+    if (!comercio) return document.createElement('div');
 
     const card = document.createElement('div');
     // CAMBIO 1: Si está entregado, agregamos la clase 'collapsed' por defecto
@@ -160,7 +160,7 @@ function createOrderCard(pedido) {
     const detailsHtml = `
         <div class="card-section">
             <div class="card-section-title"><i data-lucide="user" size="12"></i> Cliente</div>
-            <div class="card-row"><span>${cliente.nombre}</span> <span><a href="tel:${cliente.telefono}">${cliente.telefono}</a></span></div>
+            <div class="card-row"><span>${cliente?.nombre || 'Sin nombre'}</span> <span>${cliente?.telefono ? `<a href="tel:${cliente.telefono}">${cliente.telefono}</a>` : 'Sin teléfono'}</span></div>
         </div>
         <div class="card-section">
             <div class="card-section-title"><i data-lucide="banknote" size="12"></i> Finanzas</div>
@@ -449,14 +449,14 @@ window.assignRider = async function(pedidoId, riderId) {
 
 window.openEditOrderModal = function(pedidoId) {
     const pedido = data.pedidos.find(p => p.id === pedidoId);
+    if (!pedido) return;
     const cliente = data.clientes.find(c => c.id === pedido.cliente_id);
-    if (!pedido || !cliente) return;
 
     document.getElementById('edit-pedido-id').innerText = pedido.id;
     document.getElementById('edit-pedido-id-input').value = pedido.id;
     document.getElementById('edit-estado').value = pedido.estado;
-    document.getElementById('edit-cliente-nombre').value = cliente.nombre;
-    document.getElementById('edit-cliente-telefono').value = cliente.telefono;
+    document.getElementById('edit-cliente-nombre').value = cliente?.nombre || '';
+    document.getElementById('edit-cliente-telefono').value = cliente?.telefono || '';
     document.getElementById('edit-direccion').value = pedido.direccion_entrega;
     document.getElementById('edit-monto').value = pedido.monto_a_cobrar;
     document.getElementById('edit-delivery').value = pedido.costo_delivery;
