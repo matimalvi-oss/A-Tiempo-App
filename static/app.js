@@ -608,7 +608,7 @@ function mostrarVista(vista) {
     console.log(`Cambiando a vista: ${vista}`); // DEBUG
 
         if (vista === 'pedidos') {
-        if (kanban) kanban.style.display = 'block';
+        if (kanban) kanban.style.display = 'flex';
         if (liquidaciones) liquidaciones.style.display = 'none';
         
         // Pedidos activo (azul)
