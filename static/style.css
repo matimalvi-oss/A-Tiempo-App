@@ -270,6 +270,20 @@ body { background: var(--bg); color: var(--text-main); display: flex; flex-direc
         flex-wrap: wrap;
         gap: 8px !important;
     }
+
+    .header-right .btn-clear-delivered {
+        width: 40px !important;
+        min-width: 40px !important;
+        height: 40px;
+        padding: 8px !important;
+        justify-content: center;
+        gap: 0;
+        font-size: 0;
+    }
+
+    .clear-delivered-label {
+        display: none;
+    }
     
     #btn-toggle-sidebar {
         width: auto;
