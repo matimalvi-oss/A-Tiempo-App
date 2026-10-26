@@ -1,16 +1,14 @@
 // sw.js - Service Worker para PWA
-const CACHE_NAME = 'delivery-app-v3';
+const CACHE_NAME = 'delivery-app-v4';
 const urlsToCache = [
   '/',
-  '/index.html',
   '/manifest.json',
   '/static/style.css',
   '/static/app.js',
-  '/icon-192.png',
-  '/icon-512.png'
+  '/static/icon-192.png',
+  '/static/icon-512.png'
 ];
 
-// Instalación: guarda en caché los archivos principales
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -19,22 +17,14 @@ self.addEventListener('install', event => {
   );
 });
 
-// Activación: limpia cachés viejas
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
+    caches.keys().then(cacheNames => Promise.all(
+      cacheNames.map(cacheName => cacheName !== CACHE_NAME && caches.delete(cacheName))
+    )).then(() => self.clients.claim())
   );
 });
 
-// Fetch: sirve desde caché, si falla va a la red
 self.addEventListener('fetch', event => {
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin || requestUrl.pathname.startsWith('/api/')) {
@@ -42,24 +32,17 @@ self.addEventListener('fetch', event => {
   }
 
   event.respondWith(
-    caches.match(event.request)
+    fetch(new Request(event.request, { cache: 'no-cache' }))
       .then(response => {
-        // Si está en caché, lo devuelve
-        if (response) {
-          return response;
-        }
-        // Si no, lo busca en la red
-        return fetch(event.request).then(response => {
-          // Si es una respuesta válida, la guarda en caché
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
+        if (response.ok && response.type === 'basic') {
           const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, responseToCache);
-          });
-          return response;
-        });
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseToCache));
+        }
+        return response;
+      })
+      .catch(async () => {
+        const cachedResponse = await caches.match(event.request);
+        return cachedResponse || Response.error();
       })
   );
 });

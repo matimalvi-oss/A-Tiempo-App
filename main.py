@@ -151,7 +151,7 @@ def crear_pedido(req: CreateOrderRequest):
             if cliente:
                 cliente_id = cliente['id']
 
-        if cliente_id is None and (cliente_nombre or cliente_telefono):
+        if cliente_id is None:
             cursor.execute(
                 "INSERT INTO clientes (nombre, telefono) VALUES (%s, %s) RETURNING id",
                 (cliente_nombre or "Sin nombre", cliente_telefono)
