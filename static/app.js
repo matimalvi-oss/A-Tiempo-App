@@ -1,6 +1,7 @@
 // static/app.js
 let data = { pedidos: [], riders: [], comercios: [], clientes: [] };
 let filtroComercio = 'todos';
+let dashboardFetchPromise = null;
 
 const ESTADOS_KANBAN = [
     { id: 'pendiente', titulo: 'Pedidos nuevos' },
@@ -21,6 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderKanbanColumns();
         renderSidebar();
         setupListeners();
+        startDashboardPolling();
         console.log('Aplicación lista. Botones activos.');
     } catch (error) {
         console.error('Error fatal al iniciar:', error);
@@ -28,15 +30,44 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function fetchData() {
+    if (dashboardFetchPromise) return dashboardFetchPromise;
+
+    dashboardFetchPromise = (async () => {
+        try {
+            const res = await fetch('/api/dashboard', { cache: 'no-store' });
+            if (!res.ok) throw new Error('Error en la API');
+
+            const previousData = JSON.stringify(data);
+            data = await res.json();
+            updateMetrics();
+            populateComercioFilter();
+            return previousData !== JSON.stringify(data);
+        } catch (error) {
+            console.error('Error al cargar datos:', error);
+            return false;
+        }
+    })();
+
     try {
-        const res = await fetch('/api/dashboard');
-        if (!res.ok) throw new Error('Error en la API');
-        data = await res.json();
-        updateMetrics();
-        populateComercioFilter();
-    } catch (error) {
-        console.error('Error al cargar datos:', error);
+        return await dashboardFetchPromise;
+    } finally {
+        dashboardFetchPromise = null;
     }
+}
+
+function startDashboardPolling() {
+    window.setInterval(async () => {
+        if (document.hidden) return;
+
+        const dataChanged = await fetchData();
+        if (!dataChanged) return;
+
+        const board = document.getElementById('kanban-board');
+        const scrollLeft = board ? board.scrollLeft : 0;
+        renderKanbanColumns();
+        if (board) board.scrollLeft = scrollLeft;
+        renderSidebar();
+    }, 5000);
 }
 
 function updateMetrics() {
@@ -48,17 +79,24 @@ function updateMetrics() {
 
 function populateComercioFilter() {
     const select = document.getElementById('filter-comercio');
-    if (!select) return;
-    while (select.options.length > 1) select.remove(1);
-    data.comercios.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.id;
-        opt.innerText = c.nombre;
-        select.appendChild(opt);
-    });
+    const filterValue = select ? select.value : 'todos';
+    if (select) {
+        while (select.options.length > 1) select.remove(1);
+        data.comercios.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.innerText = c.nombre;
+            select.appendChild(opt);
+        });
+        select.value = Array.from(select.options).some(option => option.value === filterValue)
+            ? filterValue
+            : 'todos';
+        filtroComercio = select.value;
+    }
     
     const formSelect = document.getElementById('form-comercio-pedido');
     if (formSelect) {
+        const selectedComercio = formSelect.value;
         while (formSelect.options.length > 0) formSelect.remove(0);
         data.comercios.forEach(c => {
             const opt = document.createElement('option');
@@ -66,6 +104,9 @@ function populateComercioFilter() {
             opt.innerText = c.nombre;
             formSelect.appendChild(opt);
         });
+        if (Array.from(formSelect.options).some(option => option.value === selectedComercio)) {
+            formSelect.value = selectedComercio;
+        }
     }
 }
 
