@@ -181,13 +181,15 @@ function renderSidebar() {
     if (ridersList) {
         ridersList.innerHTML = data.riders.map(r => {
             const pedidosActivos = data.pedidos.filter(p => p.rider_id === r.id && p.estado !== 'entregado').length;
+            const estado = pedidosActivos > 1 ? 'sobrecargado' : pedidosActivos === 1 ? 'en_viaje' : 'disponible';
+            const estadoTexto = pedidosActivos === 0 ? 'Libre' : pedidosActivos === 1 ? '1 pedido activo' : `${pedidosActivos} pedidos activos`;
             return `
                 <div class="rider-card">
                     <div class="rider-header">
                         <span class="rider-name">${r.nombre}</span>
-                        <span class="rider-status status-${r.estado}"></span>
+                        <span class="rider-status status-${estado}" title="${estadoTexto}"></span>
                     </div>
-                    <div class="rider-details">${r.vehiculo} | ${pedidosActivos} pedidos activos</div>
+                    <div class="rider-details">${r.vehiculo} | <span class="rider-workload status-text-${estado}">${estadoTexto}</span></div>
                     <div class="rider-actions">
                         <button class="btn-tiny btn-tiny-primary" onclick="window.editRider(${r.id})"><i data-lucide="edit" size="12"></i></button>
                         <button class="btn-tiny btn-tiny-danger" onclick="window.deleteRider(${r.id})"><i data-lucide="trash-2" size="12"></i></button>
@@ -422,15 +424,19 @@ window.updateStatus = async function(pedidoId, nuevoEstado) {
 };
 
 window.openAssignModal = function(pedidoId) {
-    const disponibles = data.riders.filter(r => r.estado === 'disponible');
+    const asignables = data.riders.filter(r => r.estado !== 'fuera_de_servicio');
     const body = document.getElementById('modal-body');
-    body.innerHTML = disponibles.length === 0 
-        ? '<p>No hay riders disponibles.</p>'
-        : disponibles.map(r => `
+    body.innerHTML = asignables.length === 0
+        ? '<p>No hay riders disponibles para asignar.</p>'
+        : asignables.map(r => {
+            const pedidosActivos = data.pedidos.filter(p => p.rider_id === r.id && p.estado !== 'entregado').length;
+            const estado = pedidosActivos > 1 ? 'sobrecargado' : pedidosActivos === 1 ? 'en_viaje' : 'disponible';
+            const estadoTexto = pedidosActivos === 0 ? 'Libre' : pedidosActivos === 1 ? '1 pedido activo' : `${pedidosActivos} pedidos activos`;
+            return `
             <button class="rider-option" onclick="window.assignRider(${pedidoId}, ${r.id})">
-                <strong>${r.nombre}</strong> (${r.vehiculo})
+                <strong>${r.nombre}</strong> (${r.vehiculo}) <span class="rider-option-status status-text-${estado}">${estadoTexto}</span>
             </button>
-        `).join('');
+        `}).join('');
     document.getElementById('modal-overlay').classList.add('active');
     if (typeof lucide !== 'undefined') lucide.createIcons();
 };

@@ -87,6 +87,24 @@ class UpdateOrderRequest(BaseModel):
     estado: Optional[str] = None
     rider_id: Optional[int] = None
 
+def sync_rider_statuses(cursor):
+    cursor.execute("""
+        UPDATE riders AS r
+        SET estado = CASE
+            WHEN active_orders.total = 0 THEN 'disponible'
+            WHEN active_orders.total = 1 THEN 'en_viaje'
+            ELSE 'sobrecargado'
+        END
+        FROM (
+            SELECT r.id, COUNT(p.id) AS total
+            FROM riders AS r
+            LEFT JOIN pedidos AS p
+                ON p.rider_id = r.id AND p.estado != 'entregado'
+            GROUP BY r.id
+        ) AS active_orders
+        WHERE r.id = active_orders.id
+    """)
+
 # --- ENDPOINTS: DASHBOARD ---
 
 @app.get("/api/dashboard")
@@ -193,7 +211,7 @@ def asignar_rider(pedido_id: int, req: AssignRiderRequest):
     
     cursor.execute("UPDATE pedidos SET rider_id = %s, estado = 'asignado' WHERE id = %s", 
                   (req.rider_id, pedido_id))
-    cursor.execute("UPDATE riders SET estado = 'en_viaje' WHERE id = %s", (req.rider_id,))
+    sync_rider_statuses(cursor)
     
     conn.commit()
     conn.close()
@@ -218,14 +236,11 @@ def actualizar_estado(pedido_id: int, req: UpdateStatusRequest):
     elif req.nuevo_estado == "entregado":
         cursor.execute("UPDATE pedidos SET estado = %s, hora_entrega = %s WHERE id = %s",
                       (req.nuevo_estado, ahora, pedido_id))
-        cursor.execute("SELECT rider_id FROM pedidos WHERE id = %s", (pedido_id,))
-        pedido = cursor.fetchone()
-        if pedido and pedido['rider_id']:
-            cursor.execute("UPDATE riders SET estado = 'disponible' WHERE id = %s", (pedido['rider_id'],))
     else:
         cursor.execute("UPDATE pedidos SET estado = %s WHERE id = %s",
                       (req.nuevo_estado, pedido_id))
     
+    sync_rider_statuses(cursor)
     conn.commit()
     conn.close()
     
@@ -451,17 +466,13 @@ def actualizar_pedido(pedido_id: int, req: UpdateOrderRequest):
     if req.pagado is not None:
         updates.append("pagado = %s")
         params.append(req.pagado)
-    if req.rider_id is not None:
+    if req.rider_id is not None or 'rider_id' in req.__fields_set__:
         updates.append("rider_id = %s")
         params.append(req.rider_id)
         
     if req.estado is not None:
         updates.append("estado = %s")
         params.append(req.estado)
-        
-        if req.estado == 'entregado' or req.rider_id is None:
-            if pedido['rider_id']:
-                cursor.execute("UPDATE riders SET estado = 'disponible' WHERE id = %s", (pedido['rider_id'],))
         
         ahora = datetime.now()
         if req.estado == 'retirado' and not pedido['hora_real_retiro']:
@@ -475,6 +486,7 @@ def actualizar_pedido(pedido_id: int, req: UpdateOrderRequest):
         params.append(pedido_id)
         cursor.execute(f"UPDATE pedidos SET {', '.join(updates)} WHERE id = %s", params)
     
+    sync_rider_statuses(cursor)
     conn.commit()
     conn.close()
     return {"message": "Pedido actualizado"}
@@ -486,6 +498,7 @@ def limpiar_pedidos_entregados():
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM pedidos WHERE estado = 'entregado'")
+    sync_rider_statuses(cursor)
     conn.commit()
     conn.close()
     return {"message": "Pedidos entregados eliminados"}
@@ -495,6 +508,7 @@ def eliminar_pedido(pedido_id: int):
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM pedidos WHERE id = %s", (pedido_id,))
+    sync_rider_statuses(cursor)
     conn.commit()
     conn.close()
     return {"message": "Pedido eliminado"}
