@@ -10,12 +10,10 @@ from urllib.error import HTTPError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 import json
-import logging
 import uvicorn
 import os
 
 app = FastAPI()
-logger = logging.getLogger(__name__)
 
 # --- MIDDLEWARE CORS ---
 app.add_middleware(
@@ -227,27 +225,44 @@ Mensaje:
         except (UnicodeDecodeError, json.JSONDecodeError, AttributeError):
             provider_message = ""
             provider_status = ""
-        provider_message = provider_message.replace(api_key, "[REDACTED]")[:500]
-        logger.warning(
-            "Gemini API error: HTTP %s, model=%s, status=%s, message=%s",
-            error.code,
-            model,
-            provider_status,
-            provider_message or "No se recibió detalle del proveedor",
+        provider_message = (
+            provider_message
+            .replace(api_key, "[REDACTED]")
+            .replace(mensaje, "[MENSAJE REDACTADO]")[:500]
+        )
+        print(
+            f"AI_DIAGNOSTIC provider_http_error code={error.code} model={model} "
+            f"status={provider_status or 'unknown'} "
+            f"message={provider_message or 'No se recibió detalle del proveedor'}",
+            flush=True,
         )
         raise HTTPException(
             502,
             f"Gemini rechazó la solicitud (HTTP {error.code}). Revisá los logs del servidor.",
         )
-    except (TimeoutError, OSError):
+    except (TimeoutError, OSError) as error:
+        print(
+            f"AI_DIAGNOSTIC connection_error type={type(error).__name__} model={model}",
+            flush=True,
+        )
         raise HTTPException(502, "No se pudo conectar con Gemini para interpretar el mensaje")
     except (UnicodeDecodeError, json.JSONDecodeError):
+        print(f"AI_DIAGNOSTIC invalid_provider_json model={model}", flush=True)
         raise HTTPException(502, "Gemini devolvió una respuesta inválida")
 
     try:
         text = provider_response["candidates"][0]["content"]["parts"][0]["text"]
         interpreted = InterpretedOrderMessage.model_validate_json(text)
     except (KeyError, IndexError, TypeError, ValueError):
+        try:
+            finish_reason = provider_response["candidates"][0].get("finishReason", "unknown")
+        except (KeyError, IndexError, TypeError):
+            finish_reason = "missing_candidate"
+        print(
+            f"AI_DIAGNOSTIC invalid_model_response model={model} "
+            f"finish_reason={finish_reason}",
+            flush=True,
+        )
         raise HTTPException(502, "Gemini no devolvió datos de pedido válidos")
 
     return interpreted.model_dump()
