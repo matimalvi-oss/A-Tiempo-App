@@ -513,14 +513,14 @@ body { background: var(--bg); color: var(--text-main); display: flex; flex-direc
 .store-balance { margin: 0; }
 .store-balance-label { font-weight: 700; font-size: 0.9rem; }
 .store-balance--pay-store {
-    --balance-color: #9a3412;
-    --balance-bg: #ffedd5;
-    --balance-border: #fdba74;
-}
-.store-balance--collect-store {
     --balance-color: #166534;
     --balance-bg: #dcfce7;
     --balance-border: #86efac;
+}
+.store-balance--collect-store {
+    --balance-color: #9a3412;
+    --balance-bg: #ffedd5;
+    --balance-border: #fdba74;
 }
 .store-balance--settled {
     --balance-color: #374151;
