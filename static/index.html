@@ -47,7 +47,7 @@
     </button>
 
     <button onclick="mostrarVista('liquidaciones')" id="btn-vista-liquidaciones" style="padding: 16px 36px;background: none;border-left: 1px #000000;border-right: 1px black;border-bottom: none;border-top: none; cursor: pointer;font-weight: 400; font-size:large;">
-        💰 Liquidaciones
+        <i data-lucide="wallet" aria-hidden="true"></i> Liquidaciones
     </button>
 </div>
 
@@ -67,7 +67,7 @@
     <!-- Vista Liquidaciones (Oculta por defecto) -->
     <div id="vista-liquidaciones" class="liquidation-view" style="display: none; flex: 1; width:100%; min-width: 0;">
         <div class="liquidation-header">
-            <h2>💰 Liquidación de Riders</h2>
+            <h2><i data-lucide="wallet" aria-hidden="true"></i> Liquidación de Riders</h2>
             <div class="liquidation-filters">
                 <div class="liquidation-date-fields">
                     <label for="liq-desde">Desde:</label>
@@ -81,7 +81,7 @@
                     <button type="button" onclick="establecerPeriodoLiquidacion('7dias')">Últimos 7 días</button>
                     <button type="button" onclick="establecerPeriodoLiquidacion('mes')">Este mes</button>
                 </div>
-                <button class="liquidation-submit" onclick="cargarResumenLiquidaciones()">🔍 Consultar</button>
+                <button class="liquidation-submit" onclick="cargarResumenLiquidaciones()"><i data-lucide="search" aria-hidden="true"></i> Consultar</button>
                 <p class="liquidation-cutoff-note">Día operativo: 06:00 a 05:59 del día siguiente.</p>
             </div>
         </div>
@@ -92,7 +92,7 @@
         
         <!-- Sección Liquidación por Local -->
         <h2 class="liquidation-section-title">
-             Liquidación por Local
+            <i data-lucide="store" aria-hidden="true"></i> Liquidación por Local
         </h2>
         <div id="grid-resumen-locales" class="liquidation-grid">
             <p style="grid-column: 1 / -1; text-align: center; color: #6b7280; padding: 32px 0;">Hacé clic en "Consultar" para ver el resumen por local</p>
@@ -132,25 +132,25 @@
 <div id="modal-liquidacion" class="settlement-modal" style="display: none;">
     <div class="settlement-dialog">
         <div class="settlement-modal-header">
-            <h2 id="modal-liq-titulo">👤 Liquidación</h2>
+            <h2 id="modal-liq-titulo"><i data-lucide="user-round" aria-hidden="true"></i> Liquidación</h2>
             <button onclick="cerrarModalLiquidacion()" aria-label="Cerrar detalle">&times;</button>
         </div>
-        <div id="modal-liq-periodo" class="settlement-period">📅 Período: -</div>
+        <div id="modal-liq-periodo" class="settlement-period"><i data-lucide="calendar-days" aria-hidden="true"></i> Período: -</div>
         <div id="modal-liq-body" class="settlement-modal-body">
             <p style="color: #6b7280; text-align: center; padding: 32px 0;">Cargando detalle...</p>
         </div>
         <div class="settlement-modal-footer">
             <div class="settlement-totals">
                 <div class="settlement-total settlement-total--cash">
-                    <p>💵 Debe (Efectivo)</p>
+                    <p><i data-lucide="banknote" aria-hidden="true"></i> Debe (Efectivo)</p>
                     <p id="liq-total-efectivo">$ 0</p>
                 </div>
                 <div class="settlement-total settlement-total--delivery">
-                    <p>🚴 A Favor (Delivery)</p>
+                    <p><i data-lucide="bike" aria-hidden="true"></i> A Favor (Delivery)</p>
                     <p id="liq-total-delivery">$ 0</p>
                 </div>
                 <div class="settlement-total settlement-total--balance">
-                    <p>⚖️ Saldo Neto</p>
+                    <p><i data-lucide="scale" aria-hidden="true"></i> Saldo Neto</p>
                     <p id="liq-total-saldo">$ 0</p>
                 </div>
             </div>

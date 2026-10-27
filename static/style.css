@@ -310,6 +310,35 @@ body { background: var(--bg); color: var(--text-main); display: flex; flex-direc
     font-weight: 700;
 }
 
+.liquidation-header h2,
+.liquidation-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#btn-vista-pedidos,
+#btn-vista-liquidaciones {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+#btn-vista-pedidos [data-lucide],
+#btn-vista-liquidaciones [data-lucide] {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+}
+
+.liquidation-header h2 [data-lucide],
+.liquidation-section-title [data-lucide] {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 auto;
+}
+
 .liquidation-header h2 { font-size: 1.5rem; }
 .liquidation-section-title { margin-bottom: 16px; font-size: 1.25rem; }
 
@@ -367,6 +396,10 @@ body { background: var(--bg); color: var(--text-main); display: flex; flex-direc
 .liquidation-submit,
 .settlement-detail-button,
 .settlement-close-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     min-height: 44px;
     border: 0;
     border-radius: 6px;
@@ -424,6 +457,7 @@ body { background: var(--bg); color: var(--text-main); display: flex; flex-direc
     background: #dbeafe;
 }
 
+.settlement-avatar [data-lucide] { width: 20px; height: 20px; }
 .settlement-avatar--store { background: #fef3c7; }
 .settlement-card-heading h3 { margin: 0; color: #1f2937; overflow-wrap: anywhere; }
 .settlement-card-heading p { margin: 2px 0 0; color: #6b7280; font-size: 0.8rem; }
@@ -524,11 +558,16 @@ body { background: var(--bg); color: var(--text-main); display: flex; flex-direc
 }
 
 .settlement-modal-header h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     margin: 0;
     color: #1f2937;
     font-size: 1.2rem;
     overflow-wrap: anywhere;
 }
+
+.settlement-modal-header h2 [data-lucide] { width: 20px; height: 20px; flex: 0 0 auto; }
 
 .settlement-modal-header button {
     min-width: 44px;
@@ -541,6 +580,9 @@ body { background: var(--bg); color: var(--text-main); display: flex; flex-direc
 }
 
 .settlement-period {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     padding: 8px 16px;
     border-bottom: 1px solid #e5e7eb;
     background: #eff6ff;
@@ -568,6 +610,7 @@ body { background: var(--bg); color: var(--text-main); display: flex; flex-direc
 
 .settlement-total p { margin: 0; }
 .settlement-total p:first-child { margin-bottom: 4px; font-size: 0.78rem; font-weight: 700; }
+.settlement-total p:first-child [data-lucide] { width: 14px; height: 14px; vertical-align: -2px; }
 .settlement-total p:last-child { font-size: 1.2rem; font-weight: 700; overflow-wrap: anywhere; }
 .settlement-total--cash { background: #fff7ed; color: #9a3412; border-color: #fed7aa; }
 .settlement-total--delivery { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
@@ -581,7 +624,8 @@ body { background: var(--bg); color: var(--text-main); display: flex; flex-direc
     background: #f9fafb;
 }
 
-.settlement-store-details h3 { margin: 0 0 12px; color: #374151; overflow-wrap: anywhere; }
+.settlement-store-details h3 { display: flex; align-items: center; gap: 6px; margin: 0 0 12px; color: #374151; overflow-wrap: anywhere; }
+.settlement-store-details h3 [data-lucide] { flex: 0 0 auto; width: 18px; height: 18px; }
 .settlement-store-details h3 span { color: #6b7280; font-size: 0.875rem; font-weight: 400; }
 .settlement-order-list { display: grid; gap: 8px; }
 .settlement-order { padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; background: white; }
@@ -592,6 +636,7 @@ body { background: var(--bg); color: var(--text-main); display: flex; flex-direc
 .settlement-order-heading time { color: #6b7280; text-align: right; }
 .settlement-order-values { font-size: 0.85rem; }
 .settlement-order-values div { display: flex; flex-direction: column; gap: 3px; }
+.settlement-order-values span [data-lucide] { width: 14px; height: 14px; vertical-align: -2px; }
 .settlement-order-values div:first-child strong { color: #9a3412; }
 .settlement-order-values div:last-child strong { color: #1e40af; }
 .settlement-store-subtotal { flex-wrap: wrap; margin-top: 12px; padding-top: 10px; border-top: 1px solid #d1d5db; color: #374151; font-size: 0.85rem; }

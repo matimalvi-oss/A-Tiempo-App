@@ -856,7 +856,7 @@ async function cargarResumenLiquidaciones() {
             return `
                 <article class="settlement-card">
                     <div class="settlement-card-heading">
-                        <div class="settlement-avatar">👤</div>
+                        <div class="settlement-avatar"><i data-lucide="user-round" aria-hidden="true"></i></div>
                         <div>
                             <h3>${r.rider_nombre}</h3>
                             <p>ID: #${r.rider_id}</p>
@@ -881,11 +881,12 @@ async function cargarResumenLiquidaciones() {
                         <strong>${formatearMoneda(Math.abs(r.saldo))}</strong>
                     </div>
                     <button class="settlement-detail-button" onclick="verDetalleLiquidacion(${r.rider_id}, '${r.rider_nombre.replace(/'/g, "\\'")}', '${desde}', '${hasta}')">
-                        👁️ Ver Detalle por Local
+                        <i data-lucide="eye" aria-hidden="true"></i> Ver Detalle por Local
                     </button>
                 </article>
             `;
         }).join('');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
     await cargarResumenLocales(desde, hasta);
     } catch (err) {
         console.error(err);
@@ -897,10 +898,11 @@ async function verDetalleLiquidacion(riderId, riderNombre, desde, hasta) {
     const modal = document.getElementById('modal-liquidacion');
     const body = document.getElementById('modal-liq-body');
     
-    document.getElementById('modal-liq-titulo').innerHTML = `👤 Liquidación: ${riderNombre}`;
-    document.getElementById('modal-liq-periodo').innerHTML = `📅 Período: ${desde} al ${hasta}`;
+    document.getElementById('modal-liq-titulo').innerHTML = `<i data-lucide="user-round" aria-hidden="true"></i> Liquidación: ${riderNombre}`;
+    document.getElementById('modal-liq-periodo').innerHTML = `<i data-lucide="calendar-days" aria-hidden="true"></i> Período: ${desde} al ${hasta}`;
     body.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 32px 0;">Cargando detalle...</p>';
     modal.style.display = 'flex';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 
     try {
         const res = await fetch(`/api/riders/${riderId}/liquidacion?desde=${desde}&hasta=${hasta}&hora_corte=${HORA_CORTE_LIQUIDACION}`);
@@ -911,7 +913,7 @@ async function verDetalleLiquidacion(riderId, riderNombre, desde, hasta) {
         } else {
             body.innerHTML = dataLiq.comercios.map(c => `
                 <section class="settlement-store-details">
-                    <h3>🏪 ${c.comercio_nombre} <span>(${c.viajes} viajes)</span></h3>
+                    <h3><i data-lucide="store" aria-hidden="true"></i> ${c.comercio_nombre} <span>(${c.viajes} viajes)</span></h3>
                     <div class="settlement-order-list">
                         ${c.pedidos.map(p => `
                             <article class="settlement-order">
@@ -920,8 +922,8 @@ async function verDetalleLiquidacion(riderId, riderNombre, desde, hasta) {
                                     <time>${p.hora_entrega}</time>
                                 </div>
                                 <div class="settlement-order-values">
-                                    <div><span>💵 Efectivo</span><strong>${formatearMoneda(p.efectivo)}</strong></div>
-                                    <div><span>🚴 Delivery</span><strong>${formatearMoneda(p.delivery)}</strong></div>
+                                    <div><span><i data-lucide="banknote" aria-hidden="true"></i> Efectivo</span><strong>${formatearMoneda(p.efectivo)}</strong></div>
+                                    <div><span><i data-lucide="bike" aria-hidden="true"></i> Delivery</span><strong>${formatearMoneda(p.delivery)}</strong></div>
                                 </div>
                             </article>
                         `).join('')}
@@ -934,6 +936,7 @@ async function verDetalleLiquidacion(riderId, riderNombre, desde, hasta) {
                 </section>
             `).join('');
         }
+        if (typeof lucide !== 'undefined') lucide.createIcons();
 
         document.getElementById('liq-total-efectivo').textContent = formatearMoneda(dataLiq.totales.efectivo);
         document.getElementById('liq-total-delivery').textContent = formatearMoneda(dataLiq.totales.delivery);
@@ -984,7 +987,7 @@ async function cargarResumenLocales(desde, hasta) {
             return `
                 <article class="settlement-card">
                     <div class="settlement-card-heading">
-                        <div class="settlement-avatar settlement-avatar--store">🏪</div>
+                        <div class="settlement-avatar settlement-avatar--store"><i data-lucide="store" aria-hidden="true"></i></div>
                         <div>
                             <h3>${loc.comercio_nombre}</h3>
                             <p>${loc.pedidos} pedidos entregados</p>
@@ -1007,6 +1010,7 @@ async function cargarResumenLocales(desde, hasta) {
                 </article>
             `;
         }).join('');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
     } catch (err) {
         console.error(err);
         contenedor.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #dc2626; padding: 32px 0;">Error al cargar los datos de locales.</p>';
