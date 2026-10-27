@@ -19,6 +19,8 @@ function getColumnIdForEstado(estado) {
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Iniciando aplicación...');
+    mostrarVista('liquidaciones');
+    establecerPeriodoLiquidacion('hoy');
     try {
         await fetchData();
         renderKanbanColumns();
@@ -700,7 +702,7 @@ window.deleteOrder = async function(pedidoId) {
 };
 
 window.deleteAllDelivered = async function() {
-    if (!confirm('⚠️ ¿Estás seguro de eliminar TODOS los pedidos entregados?\n\nEsta acción no se puede deshacer.')) return;
+    if (!confirm('¿Estás seguro de eliminar TODOS los pedidos entregados?\n\nEsta acción no se puede deshacer.')) return;
     
     try {
         const res = await fetch('/api/pedidos/limpiar-entregados', { 
@@ -714,7 +716,7 @@ window.deleteAllDelivered = async function() {
             await fetchData();
             renderKanbanColumns();
             renderSidebar();
-            alert('✅ Pedidos entregados eliminados correctamente');
+            alert('Pedidos entregados eliminados correctamente');
         } else {
             // Intentar obtener el mensaje de error
             let errorMsg = 'Error al limpiar pedidos';
@@ -779,12 +781,6 @@ function mostrarVista(vista) {
             btnLiquidaciones.style.color = 'white';
         }
         
-        const inputHasta = document.getElementById('liq-hasta');
-        const inputDesde = document.getElementById('liq-desde');
-        if (inputHasta && inputDesde && !inputHasta.value && !inputDesde.value) {
-            establecerPeriodoLiquidacion('30dias', false);
-        }
-        
         console.log('Vista liquidaciones activada'); // DEBUG
     }
 
@@ -810,6 +806,13 @@ function obtenerFechaOperativaActual(ahora = new Date()) {
     return fecha;
 }
 
+function limpiarPeriodoLiquidacionSeleccionado() {
+    document.querySelectorAll('[data-liquidation-period]').forEach(button => {
+        button.classList.remove('is-selected');
+        button.setAttribute('aria-pressed', 'false');
+    });
+}
+
 function establecerPeriodoLiquidacion(periodo, consultar = true) {
     const fechaOperativa = obtenerFechaOperativaActual();
     const desde = new Date(fechaOperativa);
@@ -824,6 +827,11 @@ function establecerPeriodoLiquidacion(periodo, consultar = true) {
 
     document.getElementById('liq-desde').value = fechaLocalISO(desde);
     document.getElementById('liq-hasta').value = fechaLocalISO(hasta);
+    document.querySelectorAll('[data-liquidation-period]').forEach(button => {
+        const seleccionado = button.dataset.liquidationPeriod === periodo;
+        button.classList.toggle('is-selected', seleccionado);
+        button.setAttribute('aria-pressed', String(seleccionado));
+    });
     if (consultar) cargarResumenLiquidaciones();
 }
 

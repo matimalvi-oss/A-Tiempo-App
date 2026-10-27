@@ -392,6 +392,12 @@ body { background: var(--bg); color: var(--text-main); display: flex; flex-direc
 }
 
 .liquidation-presets button:hover { background: #eff6ff; }
+.liquidation-presets button.is-selected {
+    border-color: #2563eb;
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-weight: 700;
+}
 
 .liquidation-submit,
 .settlement-detail-button,
