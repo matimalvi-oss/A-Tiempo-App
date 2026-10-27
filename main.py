@@ -183,7 +183,7 @@ Mensaje:
 <mensaje>
 {mensaje}
 </mensaje>"""
-    model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+    model = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
     url = (
         "https://generativelanguage.googleapis.com/v1beta/models/"
         f"{quote(model, safe='')}:generateContent"
