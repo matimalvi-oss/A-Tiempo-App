@@ -517,14 +517,30 @@ def eliminar_pedido(pedido_id: int):
 # ENDPOINTS: LIQUIDACIONES DE RIDERS
 # ==========================================
 
+def _rango_liquidacion(desde: str, hasta: str, hora_corte: str):
+    try:
+        fecha_desde = datetime.strptime(desde, "%Y-%m-%d").date()
+        fecha_hasta = datetime.strptime(hasta, "%Y-%m-%d").date()
+        corte = datetime.strptime(hora_corte, "%H:%M").time()
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="Las fechas deben tener formato YYYY-MM-DD y la hora de corte HH:MM.",
+        ) from exc
+
+    if fecha_desde > fecha_hasta:
+        raise HTTPException(status_code=400, detail="La fecha 'Desde' no puede ser posterior a 'Hasta'.")
+
+    inicio = datetime.combine(fecha_desde, corte)
+    fin_exclusivo = datetime.combine(fecha_hasta + timedelta(days=1), corte)
+    return inicio, fin_exclusivo
+
+
 @app.get("/api/liquidaciones/resumen")
-def resumen_liquidaciones(desde: str, hasta: str):
+def resumen_liquidaciones(desde: str, hasta: str, hora_corte: str = "06:00"):
+    fecha_desde, fecha_hasta = _rango_liquidacion(desde, hasta, hora_corte)
     conn = get_db()
     cursor = conn.cursor()
-    
-    # Convertimos las fechas a formato timestamp para PostgreSQL
-    fecha_desde = f"{desde} 00:00:00"
-    fecha_hasta = f"{hasta} 23:59:59"
     
     query = """
         SELECT 
@@ -537,7 +553,7 @@ def resumen_liquidaciones(desde: str, hasta: str):
         LEFT JOIN pedidos p ON r.id = p.rider_id 
             AND p.estado = 'entregado' 
             AND p.hora_entrega >= %s::timestamp 
-            AND p.hora_entrega <= %s::timestamp
+            AND p.hora_entrega < %s::timestamp
         GROUP BY r.id, r.nombre
         ORDER BY r.nombre
     """
@@ -555,12 +571,10 @@ def resumen_liquidaciones(desde: str, hasta: str):
 
 
 @app.get("/api/riders/{rider_id}/liquidacion")
-def detalle_liquidacion(rider_id: int, desde: str, hasta: str):
+def detalle_liquidacion(rider_id: int, desde: str, hasta: str, hora_corte: str = "06:00"):
+    fecha_desde, fecha_hasta = _rango_liquidacion(desde, hasta, hora_corte)
     conn = get_db()
     cursor = conn.cursor()
-    
-    fecha_desde = f"{desde} 00:00:00"
-    fecha_hasta = f"{hasta} 23:59:59"
     
     query = """
         SELECT 
@@ -575,7 +589,7 @@ def detalle_liquidacion(rider_id: int, desde: str, hasta: str):
         WHERE p.rider_id = %s
           AND p.estado = 'entregado'
           AND p.hora_entrega >= %s::timestamp
-          AND p.hora_entrega <= %s::timestamp
+          AND p.hora_entrega < %s::timestamp
         ORDER BY c.nombre, p.hora_entrega DESC
     """
     cursor.execute(query, (rider_id, fecha_desde, fecha_hasta))
@@ -626,12 +640,10 @@ def detalle_liquidacion(rider_id: int, desde: str, hasta: str):
     }
 
 @app.get("/api/liquidaciones/locales")
-def resumen_liquidaciones_locales(desde: str, hasta: str):
+def resumen_liquidaciones_locales(desde: str, hasta: str, hora_corte: str = "06:00"):
+    fecha_desde, fecha_hasta = _rango_liquidacion(desde, hasta, hora_corte)
     conn = get_db()
     cursor = conn.cursor()
-    
-    fecha_desde = f"{desde} 00:00:00"
-    fecha_hasta = f"{hasta} 23:59:59"
     
     query = """
         SELECT 
@@ -644,7 +656,7 @@ def resumen_liquidaciones_locales(desde: str, hasta: str):
         LEFT JOIN pedidos p ON c.id = p.comercio_id 
             AND p.estado = 'entregado' 
             AND p.hora_entrega >= %s::timestamp 
-            AND p.hora_entrega <= %s::timestamp
+            AND p.hora_entrega < %s::timestamp
         WHERE c.estado = 'activo'
         GROUP BY c.id, c.nombre
         ORDER BY c.nombre

@@ -802,10 +802,18 @@ function fechaLocalISO(fecha) {
     return `${anio}-${mes}-${dia}`;
 }
 
+const HORA_CORTE_LIQUIDACION = '06:00';
+
+function obtenerFechaOperativaActual(ahora = new Date()) {
+    const fecha = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+    if (ahora.getHours() < 6) fecha.setDate(fecha.getDate() - 1);
+    return fecha;
+}
+
 function establecerPeriodoLiquidacion(periodo, consultar = true) {
-    const hoy = new Date();
-    const desde = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
-    const hasta = new Date(desde);
+    const fechaOperativa = obtenerFechaOperativaActual();
+    const desde = new Date(fechaOperativa);
+    const hasta = new Date(fechaOperativa);
 
     if (periodo === 'ayer') {
         desde.setDate(desde.getDate() - 1);
@@ -829,16 +837,17 @@ async function cargarResumenLiquidaciones() {
     contenedor.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #6b7280; padding: 32px 0;">Cargando datos...</p>';
 
     try {
-        const res = await fetch(`/api/liquidaciones/resumen?desde=${desde}&hasta=${hasta}`);
+        const res = await fetch(`/api/liquidaciones/resumen?desde=${desde}&hasta=${hasta}&hora_corte=${HORA_CORTE_LIQUIDACION}`);
         const dataLiq = await res.json();
         
-        if (!dataLiq.riders || dataLiq.riders.length === 0) {
-            contenedor.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #6b7280; padding: 32px 0;">No hay datos para este período.</p>';
+        const ridersConSaldo = (dataLiq.riders || []).filter(r => Math.abs(Number(r.saldo || 0)) > 0.000001);
+        if (ridersConSaldo.length === 0) {
+            contenedor.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #6b7280; padding: 32px 0;">No hay riders con saldo pendiente en este período.</p>';
             await cargarResumenLocales(desde, hasta);
             return;
         }
 
-        contenedor.innerHTML = dataLiq.riders.map(r => {
+        contenedor.innerHTML = ridersConSaldo.map(r => {
             const saldoColor = r.saldo >= 0 ? '#16a34a' : '#dc2626';
             const saldoBg = r.saldo >= 0 ? '#f0fdf4' : '#fef2f2';
             const saldoBorder = r.saldo >= 0 ? '#bbf7d0' : '#fecaca';
@@ -894,7 +903,7 @@ async function verDetalleLiquidacion(riderId, riderNombre, desde, hasta) {
     modal.style.display = 'flex';
 
     try {
-        const res = await fetch(`/api/riders/${riderId}/liquidacion?desde=${desde}&hasta=${hasta}`);
+        const res = await fetch(`/api/riders/${riderId}/liquidacion?desde=${desde}&hasta=${hasta}&hora_corte=${HORA_CORTE_LIQUIDACION}`);
         const dataLiq = await res.json();
 
         if (!dataLiq.comercios || dataLiq.comercios.length === 0) {
@@ -952,15 +961,16 @@ async function cargarResumenLocales(desde, hasta) {
     contenedor.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #6b7280; padding: 32px 0;">Cargando datos...</p>';
 
     try {
-        const res = await fetch(`/api/liquidaciones/locales?desde=${desde}&hasta=${hasta}`);
+        const res = await fetch(`/api/liquidaciones/locales?desde=${desde}&hasta=${hasta}&hora_corte=${HORA_CORTE_LIQUIDACION}`);
         const dataLoc = await res.json();
         
-        if (!dataLoc.locales || dataLoc.locales.length === 0) {
-            contenedor.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #6b7280; padding: 32px 0;">No hay locales con pedidos en este período.</p>';
+        const localesConSaldo = (dataLoc.locales || []).filter(loc => Math.abs(Number(loc.saldo_liquidar || 0)) > 0.000001);
+        if (localesConSaldo.length === 0) {
+            contenedor.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #6b7280; padding: 32px 0;">No hay locales con saldo pendiente en este período.</p>';
             return;
         }
 
-        contenedor.innerHTML = dataLoc.locales.map(loc => {
+        contenedor.innerHTML = localesConSaldo.map(loc => {
             const ef = parseFloat(loc.total_efectivo_cobrado || 0);
             const dl = parseFloat(loc.total_costo_delivery || 0);
             const saldo = parseFloat(loc.saldo_liquidar || 0);
