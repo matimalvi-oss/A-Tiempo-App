@@ -182,6 +182,7 @@ Mensaje:
 {mensaje}
 </mensaje>"""
     model = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
+    timeout_seconds = 60
     url = (
         "https://generativelanguage.googleapis.com/v1beta/models/"
         f"{quote(model, safe='')}:generateContent"
@@ -214,7 +215,7 @@ Mensaje:
     )
 
     try:
-        with urlopen(request, timeout=20) as response:
+        with urlopen(request, timeout=timeout_seconds) as response:
             provider_response = json.loads(response.read().decode("utf-8"))
     except HTTPError as error:
         try:
@@ -240,7 +241,16 @@ Mensaje:
             502,
             f"Gemini rechazó la solicitud (HTTP {error.code}). Revisá los logs del servidor.",
         )
-    except (TimeoutError, OSError) as error:
+    except TimeoutError:
+        print(
+            f"AI_DIAGNOSTIC timeout model={model} timeout_seconds={timeout_seconds}",
+            flush=True,
+        )
+        raise HTTPException(
+            504,
+            f"Gemini tardó más de {timeout_seconds} segundos. Probá de nuevo en unos momentos.",
+        )
+    except OSError as error:
         print(
             f"AI_DIAGNOSTIC connection_error type={type(error).__name__} model={model}",
             flush=True,
