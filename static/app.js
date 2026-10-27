@@ -148,7 +148,7 @@ function populateComercioFilter() {
     const formSelect = document.getElementById('form-comercio-pedido');
     if (formSelect) {
         const selectedComercio = formSelect.value;
-        while (formSelect.options.length > 0) formSelect.remove(0);
+        formSelect.innerHTML = '<option value="" selected disabled>Seleccioná un comercio</option>';
         data.comercios.forEach(c => {
             const opt = document.createElement('option');
             opt.value = c.id;
@@ -392,6 +392,75 @@ function setupListeners() {
     const btnNewOrder = document.getElementById('btn-new-order');
     if (btnNewOrder) btnNewOrder.addEventListener('click', () => document.getElementById('modal-new-order').classList.add('active'));
 
+    const extractButton = document.getElementById('btn-extract-order');
+    if (extractButton) {
+        extractButton.addEventListener('click', async () => {
+            const messageField = document.getElementById('form-mensaje-whatsapp');
+            const status = document.getElementById('extract-order-status');
+            const mensaje = messageField.value.trim();
+            if (!mensaje) {
+                status.textContent = 'Pegá el mensaje de WhatsApp primero.';
+                status.classList.add('is-error');
+                return;
+            }
+
+            extractButton.disabled = true;
+            status.classList.remove('is-error');
+            status.textContent = 'Interpretando el mensaje...';
+            try {
+                const res = await fetch('/api/pedidos/interpretar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mensaje })
+                });
+                const result = await res.json();
+                if (!res.ok) throw new Error(result.detail || 'No se pudo interpretar el mensaje.');
+
+                const fields = [
+                    ['cliente_nombre', 'form-cliente-nombre', 'nombre'],
+                    ['cliente_telefono', 'form-cliente-telefono', 'teléfono'],
+                    ['direccion_entrega', 'form-direccion', 'dirección'],
+                    ['monto_a_cobrar', 'form-monto', 'monto'],
+                    ['costo_delivery', 'form-delivery', 'costo de envío']
+                ];
+                const missing = [];
+                fields.forEach(([key, elementId, label]) => {
+                    if (result[key] !== null && result[key] !== undefined && result[key] !== '') {
+                        document.getElementById(elementId).value = result[key];
+                    } else {
+                        missing.push(label);
+                    }
+                });
+                if (result.pagado !== null && result.pagado !== undefined) {
+                    document.getElementById('form-pagado').checked = result.pagado;
+                } else {
+                    missing.push('estado del pago');
+                }
+
+                if (result.comercio) {
+                    const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLocaleLowerCase();
+                    const matches = data.comercios.filter(comercio => normalize(comercio.nombre) === normalize(result.comercio));
+                    if (matches.length === 1) {
+                        document.getElementById('form-comercio-pedido').value = matches[0].id;
+                    } else {
+                        missing.push('comercio (no coincide claramente con uno de los comercios registrados)');
+                    }
+                } else {
+                    missing.push('comercio');
+                }
+
+                status.textContent = missing.length
+                    ? `Datos extraídos. Revisá el formulario; no se identificó: ${missing.join(', ')}.`
+                    : 'Datos extraídos. Revisá el formulario antes de crear el pedido.';
+            } catch (error) {
+                status.textContent = error.message || 'No se pudo interpretar el mensaje. Intentá nuevamente.';
+                status.classList.add('is-error');
+            } finally {
+                extractButton.disabled = false;
+            }
+        });
+    }
+
     const btnAddComercio = document.getElementById('btn-add-comercio');
     if (btnAddComercio) btnAddComercio.addEventListener('click', () => window.openComercioModal());
 
@@ -421,6 +490,8 @@ function setupListeners() {
                 if (res.ok) {
                     document.getElementById('modal-new-order').classList.remove('active');
                     formNewOrder.reset();
+                    document.getElementById('extract-order-status').textContent = '';
+                    document.getElementById('extract-order-status').classList.remove('is-error');
                     await fetchData();
                     renderKanbanColumns();
                     renderSidebar();

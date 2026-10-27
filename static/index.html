@@ -180,9 +180,19 @@
             <div class="modal-body">
                 <form id="form-new-order">
                     <div class="form-group">
+                        <label for="form-mensaje-whatsapp">Mensaje de WhatsApp</label>
+                        <textarea id="form-mensaje-whatsapp" rows="4" maxlength="8000" placeholder="Pegá aquí el mensaje con los datos del pedido"></textarea>
+                        <small class="ai-privacy-note">El texto se envía a Gemini para extraer los datos. Revisá la información antes de crear el pedido.</small>
+                        <button type="button" class="btn-ai-extract" id="btn-extract-order">
+                            <i data-lucide="sparkles" aria-hidden="true"></i> Extraer datos
+                        </button>
+                        <p id="extract-order-status" class="extract-order-status" role="status" aria-live="polite"></p>
+                    </div>
+                    <div class="form-group">
                         <label>Comercio</label>
-                        <!-- ID CAMBIADO AQUÍ -->
-                        <select id="form-comercio-pedido" required></select>
+                        <select id="form-comercio-pedido" required>
+                            <option value="" selected disabled>Seleccioná un comercio</option>
+                        </select>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
