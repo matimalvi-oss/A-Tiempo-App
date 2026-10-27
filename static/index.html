@@ -65,30 +65,35 @@
     <main class="kanban-board" id="kanban-board" style="flex: 1; min-width: 0px;display: flex;overflow-x: auto;overflow-y: auto;flex-direction: row;"></main>
     
     <!-- Vista Liquidaciones (Oculta por defecto) -->
-    <div id="vista-liquidaciones" style="display: none; flex: 1; width:100%; min-width: 0; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-height: calc(100vh - 250px); overflow-y: auto; overflow-x:auto;">
-        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px;">
-            <h2 style="margin: 0; font-size: 1.5rem; font-weight: bold;">💰 Liquidación de Riders</h2>
-            <div style="display: flex; gap: 10px; align-items: center; background: #f9fafb; padding: 8px; border-radius: 6px; border: 1px solid #e5e7eb;">
-                <label style="font-size: 0.875rem; font-weight: 500;">Desde:</label>
-                <input type="date" id="liq-desde" style="padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 4px;">
-                <label style="font-size: 0.875rem; font-weight: 500;">Hasta:</label>
-                <input type="date" id="liq-hasta" style="padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 4px;">
-                <button onclick="cargarResumenLiquidaciones()" style="padding: 6px 12px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">
-                    🔍 Consultar
-                </button>
+    <div id="vista-liquidaciones" class="liquidation-view" style="display: none; flex: 1; width:100%; min-width: 0;">
+        <div class="liquidation-header">
+            <h2>💰 Liquidación de Riders</h2>
+            <div class="liquidation-filters">
+                <div class="liquidation-date-fields">
+                    <label for="liq-desde">Desde:</label>
+                    <input type="date" id="liq-desde">
+                    <label for="liq-hasta">Hasta:</label>
+                    <input type="date" id="liq-hasta">
+                </div>
+                <div class="liquidation-presets" aria-label="Períodos rápidos">
+                    <button type="button" onclick="establecerPeriodoLiquidacion('hoy')">Hoy</button>
+                    <button type="button" onclick="establecerPeriodoLiquidacion('ayer')">Ayer</button>
+                    <button type="button" onclick="establecerPeriodoLiquidacion('7dias')">Últimos 7 días</button>
+                    <button type="button" onclick="establecerPeriodoLiquidacion('mes')">Este mes</button>
+                </div>
+                <button class="liquidation-submit" onclick="cargarResumenLiquidaciones()">🔍 Consultar</button>
             </div>
         </div>
-        <div id="grid-resumen-riders" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+        <div id="grid-resumen-riders" class="liquidation-grid">
             <p style="grid-column: 1 / -1; text-align: center; color: #6b7280; padding: 32px 0;">Seleccioná un rango de fechas y hacé clic en "Consultar"</p>
         </div>
-                <!-- Separador -->
-        <div style="margin: 32px 0 16px 0; border-top: 2px solid #e5e7eb;"></div>
+        <div class="liquidation-divider"></div>
         
         <!-- Sección Liquidación por Local -->
-        <h2 style="margin: 0 0 16px 0; font-size: 1.25rem; font-weight: bold; color: #1f2937; display: flex; align-items: center;">
+        <h2 class="liquidation-section-title">
              Liquidación por Local
         </h2>
-        <div id="grid-resumen-locales" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+        <div id="grid-resumen-locales" class="liquidation-grid">
             <p style="grid-column: 1 / -1; text-align: center; color: #6b7280; padding: 32px 0;">Hacé clic en "Consultar" para ver el resumen por local</p>
         </div>
     </div>
@@ -123,34 +128,32 @@
 </div>
 
 <!-- Modal de Liquidación (Pegar esto JUSTO ANTES de cerrar </body> en tu index.html) -->
-<div id="modal-liquidacion" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
-    <div style="background: white; border-radius: 8px; width: 90%; max-width: 1000px; max-height: 90vh; display: flex; flex-direction: column; margin: 20px;">
-        <div style="padding: 16px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; background: #f9fafb; border-radius: 8px 8px 0 0;">
-            <h2 id="modal-liq-titulo" style="font-size: 1.25rem; font-weight: bold; color: #1f2937; display: flex; align-items: center; margin: 0;">👤 Liquidación</h2>
-            <button onclick="cerrarModalLiquidacion()" style="color: #6b7280; background: none; border: none; cursor: pointer; font-size: 1.5rem; line-height: 1;">&times;</button>
+<div id="modal-liquidacion" class="settlement-modal" style="display: none;">
+    <div class="settlement-dialog">
+        <div class="settlement-modal-header">
+            <h2 id="modal-liq-titulo">👤 Liquidación</h2>
+            <button onclick="cerrarModalLiquidacion()" aria-label="Cerrar detalle">&times;</button>
         </div>
-        <div id="modal-liq-periodo" style="padding: 8px 16px; background: #eff6ff; border-bottom: 1px solid #e5e7eb; font-size: 0.875rem; color: #1d4ed8; display: flex; align-items: center;">📅 Período: -</div>
-        <div id="modal-liq-body" style="padding: 16px; overflow-y: auto; flex-grow: 1;">
+        <div id="modal-liq-periodo" class="settlement-period">📅 Período: -</div>
+        <div id="modal-liq-body" class="settlement-modal-body">
             <p style="color: #6b7280; text-align: center; padding: 32px 0;">Cargando detalle...</p>
         </div>
-        <div style="padding: 16px; border-top: 1px solid #e5e7eb; background: #f9fafb; border-radius: 0 0 8px 8px;">
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; text-align: center; margin-bottom: 16px;">
-                <div style="padding: 12px; background: #fef2f2; border-radius: 6px; border: 1px solid #fecaca;">
-                    <p style="font-size: 0.75rem; color: #dc2626; font-weight: bold; margin-bottom: 4px; margin-top: 0;">💵 Debe (Efectivo)</p>
-                    <p id="liq-total-efectivo" style="font-size: 1.5rem; font-weight: bold; color: #991b1b; margin: 0;">$ 0</p>
+        <div class="settlement-modal-footer">
+            <div class="settlement-totals">
+                <div class="settlement-total settlement-total--cash">
+                    <p>💵 Debe (Efectivo)</p>
+                    <p id="liq-total-efectivo">$ 0</p>
                 </div>
-                <div style="padding: 12px; background: #f0fdf4; border-radius: 6px; border: 1px solid #bbf7d0;">
-                    <p style="font-size: 0.75rem; color: #16a34a; font-weight: bold; margin-bottom: 4px; margin-top: 0;">🚴 A Favor (Delivery)</p>
-                    <p id="liq-total-delivery" style="font-size: 1.5rem; font-weight: bold; color: #166534; margin: 0;">$ 0</p>
+                <div class="settlement-total settlement-total--delivery">
+                    <p>🚴 A Favor (Delivery)</p>
+                    <p id="liq-total-delivery">$ 0</p>
                 </div>
-                <div style="padding: 12px; background: #eff6ff; border-radius: 6px; border: 1px solid #bfdbfe;">
-                    <p style="font-size: 0.75rem; color: #2563eb; font-weight: bold; margin-bottom: 4px; margin-top: 0;">⚖️ Saldo Neto</p>
-                    <p id="liq-total-saldo" style="font-size: 1.5rem; font-weight: bold; color: #1e40af; margin: 0;">$ 0</p>
+                <div class="settlement-total settlement-total--balance">
+                    <p>⚖️ Saldo Neto</p>
+                    <p id="liq-total-saldo">$ 0</p>
                 </div>
             </div>
-            <div style="display: flex; justify-content: flex-end;">
-                <button onclick="cerrarModalLiquidacion()" style="padding: 8px 16px; background: #2563eb; color: white; border-radius: 6px; border: none; cursor: pointer; font-size: 0.875rem; display: flex; align-items: center;">✔ Cerrar</button>
-            </div>
+            <button class="settlement-close-button" onclick="cerrarModalLiquidacion()">✔ Cerrar</button>
         </div>
     </div>
 </div>

@@ -779,15 +779,11 @@ function mostrarVista(vista) {
             btnLiquidaciones.style.color = 'white';
         }
         
-        // Inicializar fechas por defecto (últimos 30 días)
-        const hoy = new Date();
-        const hace30 = new Date();
-        hace30.setDate(hoy.getDate() - 30);
-        
         const inputHasta = document.getElementById('liq-hasta');
         const inputDesde = document.getElementById('liq-desde');
-        if (inputHasta) inputHasta.value = hoy.toISOString().split('T')[0];
-        if (inputDesde) inputDesde.value = hace30.toISOString().split('T')[0];
+        if (inputHasta && inputDesde && !inputHasta.value && !inputDesde.value) {
+            establecerPeriodoLiquidacion('30dias', false);
+        }
         
         console.log('Vista liquidaciones activada'); // DEBUG
     }
@@ -799,10 +795,35 @@ function formatearMoneda(valor) {
     return '$ ' + Number(valor || 0).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
+function fechaLocalISO(fecha) {
+    const anio = fecha.getFullYear();
+    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+    const dia = String(fecha.getDate()).padStart(2, '0');
+    return `${anio}-${mes}-${dia}`;
+}
+
+function establecerPeriodoLiquidacion(periodo, consultar = true) {
+    const hoy = new Date();
+    const desde = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    const hasta = new Date(desde);
+
+    if (periodo === 'ayer') {
+        desde.setDate(desde.getDate() - 1);
+        hasta.setDate(hasta.getDate() - 1);
+    } else if (periodo === '7dias') desde.setDate(desde.getDate() - 6);
+    else if (periodo === 'mes') desde.setDate(1);
+    else if (periodo !== 'hoy') desde.setDate(desde.getDate() - (periodo === '30dias' ? 29 : 30));
+
+    document.getElementById('liq-desde').value = fechaLocalISO(desde);
+    document.getElementById('liq-hasta').value = fechaLocalISO(hasta);
+    if (consultar) cargarResumenLiquidaciones();
+}
+
 async function cargarResumenLiquidaciones() {
     const desde = document.getElementById('liq-desde').value;
     const hasta = document.getElementById('liq-hasta').value;
     if (!desde || !hasta) { alert('Seleccioná un rango de fechas válido.'); return; }
+    if (desde > hasta) { alert('La fecha "Desde" no puede ser posterior a "Hasta".'); return; }
 
     const contenedor = document.getElementById('grid-resumen-riders');
     contenedor.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #6b7280; padding: 32px 0;">Cargando datos...</p>';
@@ -813,6 +834,7 @@ async function cargarResumenLiquidaciones() {
         
         if (!dataLiq.riders || dataLiq.riders.length === 0) {
             contenedor.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #6b7280; padding: 32px 0;">No hay datos para este período.</p>';
+            await cargarResumenLocales(desde, hasta);
             return;
         }
 
@@ -823,36 +845,36 @@ async function cargarResumenLiquidaciones() {
             const saldoLabel = r.saldo >= 0 ? 'A favor del rider' : 'Debe entregar';
             
             return `
-                <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                    <div style="display: flex; align-items: center; margin-bottom: 12px;">
-                        <div style="width: 40px; height: 40px; background: #dbeafe; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px;">👤</div>
+                <article class="settlement-card">
+                    <div class="settlement-card-heading">
+                        <div class="settlement-avatar">👤</div>
                         <div>
-                            <h3 style="margin: 0; font-weight: bold; color: #1f2937;">${r.rider_nombre}</h3>
-                            <p style="margin: 0; font-size: 0.75rem; color: #6b7280;">ID: #${r.rider_id}</p>
+                            <h3>${r.rider_nombre}</h3>
+                            <p>ID: #${r.rider_id}</p>
                         </div>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; font-size: 0.875rem;">
-                        <div style="background: #f9fafb; padding: 8px; border-radius: 4px; text-align: center;">
-                            <p style="margin: 0; font-size: 0.75rem; color: #6b7280;">Viajes</p>
-                            <p style="margin: 0; font-weight: bold; font-size: 1.125rem;">${r.viajes}</p>
+                    <div class="settlement-card-metrics">
+                        <div class="settlement-metric">
+                            <span>Viajes</span>
+                            <strong>${r.viajes}</strong>
                         </div>
-                        <div style="background: #fef2f2; padding: 8px; border-radius: 4px; text-align: center;">
-                            <p style="margin: 0; font-size: 0.75rem; color: #dc2626;">Debe (Ef.)</p>
-                            <p style="margin: 0; font-weight: bold; color: #dc2626;">${formatearMoneda(r.total_efectivo)}</p>
+                        <div class="settlement-metric settlement-metric--cash">
+                            <span>Efectivo</span>
+                            <strong>${formatearMoneda(r.total_efectivo)}</strong>
                         </div>
-                        <div style="background: #f0fdf4; padding: 8px; border-radius: 4px; text-align: center; grid-column: 1 / -1;">
-                            <p style="margin: 0; font-size: 0.75rem; color: #16a34a;">A favor (Delivery)</p>
-                            <p style="margin: 0; font-weight: bold; color: #16a34a;">${formatearMoneda(r.total_delivery)}</p>
+                        <div class="settlement-metric settlement-metric--delivery">
+                            <span>Delivery</span>
+                            <strong>${formatearMoneda(r.total_delivery)}</strong>
                         </div>
                     </div>
-                    <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; margin-bottom: 12px; background: ${saldoBg}; border: 1px solid ${saldoBorder}; border-radius: 6px; padding: 12px; text-align: center;">
-                        <p style="margin: 0 0 4px 0; font-size: 0.75rem; color: #4b5563;">Saldo Neto: <span style="font-weight: 600;">${saldoLabel}</span></p>
-                        <p style="margin: 0; font-size: 1.25rem; font-weight: bold; color: ${saldoColor};">${formatearMoneda(Math.abs(r.saldo))}</p>
+                    <div class="settlement-card-balance" style="--balance-color: ${saldoColor}; --balance-bg: ${saldoBg}; --balance-border: ${saldoBorder};">
+                        <span>Saldo neto · ${saldoLabel}</span>
+                        <strong>${formatearMoneda(Math.abs(r.saldo))}</strong>
                     </div>
-                    <button onclick="verDetalleLiquidacion(${r.rider_id}, '${r.rider_nombre.replace(/'/g, "\\'")}', '${desde}', '${hasta}')" style="width: 100%; padding: 8px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; display: flex; align-items: center; justify-content: center;">
+                    <button class="settlement-detail-button" onclick="verDetalleLiquidacion(${r.rider_id}, '${r.rider_nombre.replace(/'/g, "\\'")}', '${desde}', '${hasta}')">
                         👁️ Ver Detalle por Local
                     </button>
-                </div>
+                </article>
             `;
         }).join('');
     await cargarResumenLocales(desde, hasta);
@@ -879,38 +901,28 @@ async function verDetalleLiquidacion(riderId, riderNombre, desde, hasta) {
             body.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 32px 0;">No hay viajes entregados en este período.</p>';
         } else {
             body.innerHTML = dataLiq.comercios.map(c => `
-                <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; background: #f9fafb; margin-bottom: 16px;">
-                    <h3 style="margin: 0 0 12px 0; font-weight: 600; color: #374151; display: flex; align-items: center;">
-                        🏪 ${c.comercio_nombre} <span style="font-size: 0.875rem; font-weight: normal; color: #6b7280; margin-left: 8px;">(${c.viajes} viajes)</span>
-                    </h3>
-                    <div style="overflow-x: auto;">
-                        <table style="width: 100%; font-size: 0.875rem; text-align: left; color: #4b5563; border-collapse: collapse;">
-                            <thead style="font-size: 0.75rem; text-transform: uppercase; color: #374151; background: #e5e7eb;">
-                                <tr>
-                                    <th style="padding: 8px 12px;">ID Pedido</th>
-                                    <th style="padding: 8px 12px;">Fecha/Hora</th>
-                                    <th style="padding: 8px 12px; text-align: right;">💵 Efectivo</th>
-                                    <th style="padding: 8px 12px; text-align: right;">🚴 Delivery</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${c.pedidos.map(p => `
-                                    <tr style="background: white; border-bottom: 1px solid #e5e7eb;">
-                                        <td style="padding: 8px 12px; font-weight: 500;">#${p.id}</td>
-                                        <td style="padding: 8px 12px;">${p.hora_entrega}</td>
-                                        <td style="padding: 8px 12px; text-align: right; color: #dc2626; font-weight: 500;">${formatearMoneda(p.efectivo)}</td>
-                                        <td style="padding: 8px 12px; text-align: right; color: #16a34a; font-weight: 500;">${formatearMoneda(p.delivery)}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
+                <section class="settlement-store-details">
+                    <h3>🏪 ${c.comercio_nombre} <span>(${c.viajes} viajes)</span></h3>
+                    <div class="settlement-order-list">
+                        ${c.pedidos.map(p => `
+                            <article class="settlement-order">
+                                <div class="settlement-order-heading">
+                                    <strong>Pedido #${p.id}</strong>
+                                    <time>${p.hora_entrega}</time>
+                                </div>
+                                <div class="settlement-order-values">
+                                    <div><span>💵 Efectivo</span><strong>${formatearMoneda(p.efectivo)}</strong></div>
+                                    <div><span>🚴 Delivery</span><strong>${formatearMoneda(p.delivery)}</strong></div>
+                                </div>
+                            </article>
+                        `).join('')}
                     </div>
-                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #d1d5db; font-size: 0.875rem; display: flex; justify-content: flex-end; gap: 24px;">
-                        <span style="color: #4b5563; font-weight: 500;">Subtotal:</span>
-                        <span style="color: #dc2626; font-weight: 600;">Ef: ${formatearMoneda(c.subtotal_efectivo)}</span>
-                        <span style="color: #16a34a; font-weight: 600;">Del: ${formatearMoneda(c.subtotal_delivery)}</span>
+                    <div class="settlement-store-subtotal">
+                        <span>Subtotal</span>
+                        <strong>Efectivo: ${formatearMoneda(c.subtotal_efectivo)}</strong>
+                        <strong>Delivery: ${formatearMoneda(c.subtotal_delivery)}</strong>
                     </div>
-                </div>
+                </section>
             `).join('');
         }
 
@@ -919,7 +931,7 @@ async function verDetalleLiquidacion(riderId, riderNombre, desde, hasta) {
         const saldoEl = document.getElementById('liq-total-saldo');
         const saldo = dataLiq.totales.saldo;
         saldoEl.textContent = (saldo < 0 ? '- ' : '+ ') + formatearMoneda(Math.abs(saldo));
-        saldoEl.style.color = saldo >= 0 ? '#166534' : '#991b1b';
+        saldoEl.style.color = saldo > 0 ? '#166534' : saldo < 0 ? '#991b1b' : '#374151';
 
     } catch (err) {
         console.error(err);
@@ -953,37 +965,36 @@ async function cargarResumenLocales(desde, hasta) {
             const dl = parseFloat(loc.total_costo_delivery || 0);
             const saldo = parseFloat(loc.saldo_liquidar || 0);
             
-            // Color del saldo: verde si el local recibe plata, rojo si debe
-            const saldoColor = saldo >= 0 ? '#16a34a' : '#dc2626';
-            const saldoBg = saldo >= 0 ? '#f0fdf4' : '#fef2f2';
-            const saldoBorder = saldo >= 0 ? '#bbf7d0' : '#fecaca';
-            const saldoLabel = saldo >= 0 ? 'A favor del local' : 'Local debe diferencia';
+            const estadoSaldo = saldo > 0
+                ? { clase: 'collect-store', etiqueta: 'Nosotros debemos al local' }
+                : saldo < 0
+                    ? { clase: 'pay-store', etiqueta: 'El local nos debe pagar' }
+                    : { clase: 'settled', etiqueta: 'Sin saldo pendiente' };
             
             return `
-                <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                    <div style="display: flex; align-items: center; margin-bottom: 12px;">
-                        <div style="width: 40px; height: 40px; background: #fef3c7; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; font-size: 1.25rem;">🏪</div>
+                <article class="settlement-card">
+                    <div class="settlement-card-heading">
+                        <div class="settlement-avatar settlement-avatar--store">🏪</div>
                         <div>
-                            <h3 style="margin: 0; font-weight: bold; color: #1f2937;">${loc.comercio_nombre}</h3>
-                            <p style="margin: 0; font-size: 0.75rem; color: #6b7280;">${loc.pedidos} pedidos entregados</p>
+                            <h3>${loc.comercio_nombre}</h3>
+                            <p>${loc.pedidos} pedidos entregados</p>
                         </div>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; font-size: 0.875rem;">
-                        <div style="background: #fef2f2; padding: 8px; border-radius: 4px; text-align: center;">
-                            <p style="margin: 0; font-size: 0.75rem; color: #dc2626;">Efectivo cobrado</p>
-                            <p style="margin: 0; font-weight: bold; color: #dc2626;">${formatearMoneda(ef)}</p>
+                    <div class="settlement-card-metrics">
+                        <div class="settlement-metric settlement-metric--cash">
+                            <span>Efectivo cobrado</span>
+                            <strong>${formatearMoneda(ef)}</strong>
                         </div>
-                        <div style="background: #eff6ff; padding: 8px; border-radius: 4px; text-align: center;">
-                            <p style="margin: 0; font-size: 0.75rem; color: #2563eb;">Costo Delivery</p>
-                            <p style="margin: 0; font-weight: bold; color: #2563eb;">${formatearMoneda(dl)}</p>
+                        <div class="settlement-metric settlement-metric--delivery">
+                            <span>Costo Delivery</span>
+                            <strong>${formatearMoneda(dl)}</strong>
                         </div>
                     </div>
-                    <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; background: ${saldoBg}; border: 1px solid ${saldoBorder}; border-radius: 6px; padding: 12px; text-align: center;">
-                        <p style="margin: 0 0 4px 0; font-size: 0.75rem; color: #4b5563;">💰 Se le debe liquidar al local</p>
-                        <p style="margin: 0; font-size: 1.25rem; font-weight: bold; color: ${saldoColor};">${formatearMoneda(Math.abs(saldo))}</p>
-                        <p style="margin: 4px 0 0 0; font-size: 0.7rem; color: #6b7280;">${saldoLabel}</p>
+                    <div class="store-balance store-balance--${estadoSaldo.clase}">
+                        <span class="store-balance-label">${estadoSaldo.etiqueta}</span>
+                        <strong>${formatearMoneda(Math.abs(saldo))}</strong>
                     </div>
-                </div>
+                </article>
             `;
         }).join('');
     } catch (err) {

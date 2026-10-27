@@ -285,6 +285,310 @@ body { background: var(--bg); color: var(--text-main); display: flex; flex-direc
     min-width: 0;
 }
 
+.liquidation-view {
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    max-height: calc(100vh - 250px);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.liquidation-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.liquidation-header h2,
+.liquidation-section-title {
+    margin: 0;
+    color: #1f2937;
+    font-weight: 700;
+}
+
+.liquidation-header h2 { font-size: 1.5rem; }
+.liquidation-section-title { margin-bottom: 16px; font-size: 1.25rem; }
+
+.liquidation-filters {
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: 8px;
+    align-items: center;
+    padding: 10px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+
+.liquidation-date-fields {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.liquidation-date-fields label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #374151;
+}
+
+.liquidation-date-fields input {
+    min-width: 0;
+    min-height: 40px;
+    padding: 6px 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    color: #111827;
+}
+
+.liquidation-presets {
+    display: flex;
+    gap: 6px;
+}
+
+.liquidation-presets button {
+    min-height: 36px;
+    padding: 6px 9px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: white;
+    color: #334155;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.liquidation-presets button:hover { background: #eff6ff; }
+
+.liquidation-submit,
+.settlement-detail-button,
+.settlement-close-button {
+    min-height: 44px;
+    border: 0;
+    border-radius: 6px;
+    background: #2563eb;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.liquidation-submit { padding: 8px 14px; }
+.settlement-detail-button { width: 100%; padding: 8px 12px; }
+.settlement-close-button { padding: 8px 16px; }
+
+.liquidation-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.liquidation-divider {
+    margin: 32px 0 16px;
+    border-top: 2px solid #e5e7eb;
+}
+
+.settlement-card {
+    min-width: 0;
+    padding: 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.settlement-card-heading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.settlement-avatar {
+    display: grid;
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border-radius: 50%;
+    background: #dbeafe;
+}
+
+.settlement-avatar--store { background: #fef3c7; }
+.settlement-card-heading h3 { margin: 0; color: #1f2937; overflow-wrap: anywhere; }
+.settlement-card-heading p { margin: 2px 0 0; color: #6b7280; font-size: 0.8rem; }
+
+.settlement-card-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.settlement-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    padding: 10px;
+    border-radius: 6px;
+    background: #f3f4f6;
+}
+
+.settlement-metric span { color: #4b5563; font-size: 0.78rem; }
+.settlement-metric strong { color: #111827; overflow-wrap: anywhere; }
+.settlement-metric--cash { background: #fff7ed; }
+.settlement-metric--cash strong { color: #9a3412; }
+.settlement-metric--delivery { background: #eff6ff; }
+.settlement-metric--delivery strong { color: #1e40af; }
+
+.settlement-card-balance,
+.store-balance {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 12px;
+    border: 1px solid var(--balance-border);
+    border-radius: 6px;
+    background: var(--balance-bg);
+    color: var(--balance-color);
+}
+
+.settlement-card-balance span { color: #374151; font-size: 0.8rem; }
+.settlement-card-balance strong,
+.store-balance strong { font-size: 1.1rem; text-align: right; }
+
+.store-balance { margin: 0; }
+.store-balance-label { font-weight: 700; font-size: 0.9rem; }
+.store-balance--pay-store {
+    --balance-color: #9a3412;
+    --balance-bg: #ffedd5;
+    --balance-border: #fdba74;
+}
+.store-balance--collect-store {
+    --balance-color: #166534;
+    --balance-bg: #dcfce7;
+    --balance-border: #86efac;
+}
+.store-balance--settled {
+    --balance-color: #374151;
+    --balance-bg: #f3f4f6;
+    --balance-border: #d1d5db;
+}
+
+.settlement-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.55);
+}
+
+.settlement-dialog {
+    display: flex;
+    flex-direction: column;
+    width: 90%;
+    max-width: 1000px;
+    max-height: 90vh;
+    margin: 20px;
+    border-radius: 10px;
+    background: white;
+}
+
+.settlement-modal-header,
+.settlement-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    background: #f9fafb;
+}
+
+.settlement-modal-header {
+    border-bottom: 1px solid #e5e7eb;
+    border-radius: 10px 10px 0 0;
+}
+
+.settlement-modal-header h2 {
+    margin: 0;
+    color: #1f2937;
+    font-size: 1.2rem;
+    overflow-wrap: anywhere;
+}
+
+.settlement-modal-header button {
+    min-width: 44px;
+    min-height: 44px;
+    border: 0;
+    background: transparent;
+    color: #4b5563;
+    font-size: 1.6rem;
+    cursor: pointer;
+}
+
+.settlement-period {
+    padding: 8px 16px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 0.875rem;
+}
+
+.settlement-modal-body { flex: 1; overflow-y: auto; padding: 16px; }
+.settlement-modal-footer { flex-direction: column; border-top: 1px solid #e5e7eb; }
+
+.settlement-totals {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    text-align: center;
+}
+
+.settlement-total {
+    padding: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    background: #f3f4f6;
+}
+
+.settlement-total p { margin: 0; }
+.settlement-total p:first-child { margin-bottom: 4px; font-size: 0.78rem; font-weight: 700; }
+.settlement-total p:last-child { font-size: 1.2rem; font-weight: 700; overflow-wrap: anywhere; }
+.settlement-total--cash { background: #fff7ed; color: #9a3412; border-color: #fed7aa; }
+.settlement-total--delivery { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
+.settlement-total--balance { background: #f3f4f6; color: #374151; }
+
+.settlement-store-details {
+    margin-bottom: 16px;
+    padding: 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f9fafb;
+}
+
+.settlement-store-details h3 { margin: 0 0 12px; color: #374151; overflow-wrap: anywhere; }
+.settlement-store-details h3 span { color: #6b7280; font-size: 0.875rem; font-weight: 400; }
+.settlement-order-list { display: grid; gap: 8px; }
+.settlement-order { padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; background: white; }
+.settlement-order-heading,
+.settlement-order-values,
+.settlement-store-subtotal { display: flex; justify-content: space-between; gap: 12px; }
+.settlement-order-heading { margin-bottom: 8px; color: #374151; font-size: 0.875rem; }
+.settlement-order-heading time { color: #6b7280; text-align: right; }
+.settlement-order-values { font-size: 0.85rem; }
+.settlement-order-values div { display: flex; flex-direction: column; gap: 3px; }
+.settlement-order-values div:first-child strong { color: #9a3412; }
+.settlement-order-values div:last-child strong { color: #1e40af; }
+.settlement-store-subtotal { flex-wrap: wrap; margin-top: 12px; padding-top: 10px; border-top: 1px solid #d1d5db; color: #374151; font-size: 0.85rem; }
+
 /* ==========================================
    RESPONSIVE - MÓVIL (menos de 768px)
    ========================================== */
@@ -512,11 +816,57 @@ body { background: var(--bg); color: var(--text-main); display: flex; flex-direc
         padding: 10px;
         max-height: none;
     }
-    
+
+    .liquidation-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .liquidation-header h2 { font-size: 1.25rem; }
+    .liquidation-filters { grid-template-columns: minmax(0, 1fr); }
+
+    .liquidation-date-fields {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px 8px;
+    }
+
+    .liquidation-date-fields input { width: 100%; }
+    .liquidation-presets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .liquidation-presets button { padding: 6px 4px; font-size: 0.85rem; }
+    .liquidation-submit { width: 100%; }
+
     #grid-resumen-riders,
     #grid-resumen-locales {
         grid-template-columns: 1fr;
     }
+
+    .liquidation-grid { gap: 12px; }
+    .settlement-card { padding: 14px; }
+    .settlement-modal { align-items: stretch; }
+    .settlement-dialog {
+        width: 100%;
+        max-width: none;
+        height: 100%;
+        max-height: 100dvh;
+        margin: 0;
+        border-radius: 0;
+    }
+
+    .settlement-modal-header { padding-top: calc(8px + env(safe-area-inset-top)); }
+    .settlement-modal-body { padding: 12px; }
+    .settlement-modal-footer { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+
+    .settlement-totals {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .settlement-total--balance { grid-column: 1 / -1; }
+    .settlement-total { padding: 8px; }
+    .settlement-total p:last-child { font-size: 1.05rem; }
+    .settlement-store-details { padding: 12px; }
 }
 
 /* ==========================================
