@@ -266,6 +266,18 @@ function createOrderCard(pedido) {
     }
 
     if (pedido.estado !== 'pendiente' && pedido.estado !== 'entregado') {
+        const direccion = typeof pedido.direccion_entrega === 'string'
+            ? pedido.direccion_entrega.trim()
+            : '';
+        if (direccion) {
+            const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(direccion)}&dir_action=navigate`;
+            actionsHtml += `
+                <a class="btn-sm btn-primary" href="${mapsUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">
+                    <i data-lucide="map-pin" size="14"></i> Cómo llegar
+                </a>
+            `;
+        }
+
         actionsHtml += `
             <button class="btn-sm btn-success" onclick="event.stopPropagation(); window.updateStatus(${pedido.id}, 'entregado')">
                 <i data-lucide="check-circle" size="14"></i> Entregar

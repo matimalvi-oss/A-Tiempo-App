@@ -1,5 +1,5 @@
 // sw.js - Service Worker para PWA
-const CACHE_NAME = 'delivery-app-v4';
+const CACHE_NAME = 'delivery-app-v5';
 const urlsToCache = [
   '/',
   '/manifest.json',
