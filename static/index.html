@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Panel Operativo A Tiempo</title>
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -50,6 +50,15 @@
         💰 Liquidaciones
     </button>
 </div>
+
+<div class="board-tools" id="board-tools">
+    <label class="order-search">
+        <i data-lucide="search" size="16"></i>
+        <input type="search" id="search-orders" placeholder="Buscar por pedido, cliente, dirección o local" aria-label="Buscar pedidos">
+    </label>
+    <span id="last-updated" class="last-updated" role="status" aria-live="polite">Cargando pedidos...</span>
+</div>
+<div id="new-order-toast" class="new-order-toast" role="status" aria-live="polite"></div>
 
 <div class="container" style="display: flex; gap: 20px; align-items: flex-start; transition: all 0.3s ease; overflow-y: auto;">
     <!-- Vista Pedidos (Kanban) - ID original mantenido -->
@@ -159,7 +168,7 @@
 
     <!-- MODAL NUEVO PEDIDO -->
     <div class="modal-overlay" id="modal-new-order">
-        <div class="modal modal-large">
+        <div class="modal modal-large modal-new-order">
             <div class="modal-header">
                 <h2>Crear Nuevo Pedido</h2>
                 <button class="close-btn" id="close-new-order"><i data-lucide="x"></i></button>
@@ -174,25 +183,25 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Nombre del Cliente</label>
-                            <input type="text" id="form-cliente-nombre">
+                            <input type="text" id="form-cliente-nombre" autocomplete="name">
                         </div>
                         <div class="form-group">
                             <label>Teléfono del Cliente</label>
-                            <input type="text" id="form-cliente-telefono">
+                            <input type="tel" id="form-cliente-telefono" autocomplete="tel">
                         </div>
                     </div>
                     <div class="form-group">
                         <label>Dirección de Entrega</label>
-                        <input type="text" id="form-direccion" required>
+                        <input type="text" id="form-direccion" autocomplete="street-address" required>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
                             <label>Monto a Cobrar ($)</label>
-                            <input type="number" id="form-monto" step="0.01" value="0">
+                            <input type="number" id="form-monto" inputmode="decimal" step="0.01" value="0">
                         </div>
                         <div class="form-group">
                             <label>Costo Delivery ($)</label>
-                            <input type="number" id="form-delivery" step="0.01" value="0">
+                            <input type="number" id="form-delivery" inputmode="decimal" step="0.01" value="0">
                         </div>
                     </div>
                     <div class="form-group checkbox-group">

@@ -2,6 +2,8 @@
 let data = { pedidos: [], riders: [], comercios: [], clientes: [] };
 let filtroComercio = 'todos';
 let dashboardFetchPromise = null;
+let orderSearchQuery = '';
+const orderCardExpanded = new Map();
 
 const ESTADOS_KANBAN = [
     { id: 'pendiente', titulo: 'Pedidos nuevos' },
@@ -41,9 +43,12 @@ async function fetchData() {
             data = await res.json();
             updateMetrics();
             populateComercioFilter();
+            updateLastUpdated();
             return previousData !== JSON.stringify(data);
         } catch (error) {
             console.error('Error al cargar datos:', error);
+            const lastUpdated = document.getElementById('last-updated');
+            if (lastUpdated) lastUpdated.textContent = 'No se pudo actualizar';
             return false;
         }
     })();
@@ -59,15 +64,59 @@ function startDashboardPolling() {
     window.setInterval(async () => {
         if (document.hidden) return;
 
+        const existingPendingIds = new Set(
+            data.pedidos.filter(pedido => pedido.estado === 'pendiente').map(pedido => pedido.id)
+        );
         const dataChanged = await fetchData();
         if (!dataChanged) return;
 
+        const newPendingOrders = data.pedidos.filter(
+            pedido => pedido.estado === 'pendiente' && !existingPendingIds.has(pedido.id)
+        );
+        if (newPendingOrders.length) {
+            showOrderToast(newPendingOrders.length);
+        }
+
         const board = document.getElementById('kanban-board');
         const scrollLeft = board ? board.scrollLeft : 0;
+        const scrollTop = board ? board.scrollTop : 0;
+        const columnScrollPositions = new Map(
+            Array.from(document.querySelectorAll('.kanban-column')).map((column, index) => [
+                index,
+                column.querySelector('.column-cards')?.scrollTop || 0
+            ])
+        );
         renderKanbanColumns();
-        if (board) board.scrollLeft = scrollLeft;
+        if (board) {
+            board.scrollLeft = scrollLeft;
+            board.scrollTop = scrollTop;
+        }
+        document.querySelectorAll('.kanban-column').forEach((column, index) => {
+            const cards = column.querySelector('.column-cards');
+            if (cards) cards.scrollTop = columnScrollPositions.get(index) || 0;
+        });
         renderSidebar();
     }, 5000);
+}
+
+function updateLastUpdated() {
+    const lastUpdated = document.getElementById('last-updated');
+    if (lastUpdated) {
+        lastUpdated.textContent = `Actualizado ${new Intl.DateTimeFormat('es', {
+            hour: '2-digit',
+            minute: '2-digit'
+        }).format(new Date())}`;
+    }
+}
+
+function showOrderToast(count) {
+    const toast = document.getElementById('new-order-toast');
+    if (!toast) return;
+
+    toast.textContent = count === 1 ? 'Llegó un pedido nuevo' : `Llegaron ${count} pedidos nuevos`;
+    toast.classList.add('visible');
+    window.clearTimeout(showOrderToast.timeoutId);
+    showOrderToast.timeoutId = window.setTimeout(() => toast.classList.remove('visible'), 4500);
 }
 
 function updateMetrics() {
@@ -117,7 +166,23 @@ function renderKanbanColumns() {
 
     ESTADOS_KANBAN.forEach(col => {
         // Filtrar pedidos que pertenecen a esta columna agrupada
-        let pedidosCol = data.pedidos.filter(p => getColumnIdForEstado(p.estado) === col.id);
+        let pedidosCol = data.pedidos.filter(p => {
+            if (getColumnIdForEstado(p.estado) !== col.id) return false;
+
+            const comercio = data.comercios.find(item => item.id === p.comercio_id);
+            const cliente = data.clientes.find(item => item.id === p.cliente_id);
+            const rider = data.riders.find(item => item.id === p.rider_id);
+            const searchableText = [
+                p.id,
+                p.direccion_entrega,
+                comercio?.nombre,
+                cliente?.nombre,
+                cliente?.telefono,
+                rider?.nombre
+            ].join(' ').toLocaleLowerCase();
+
+            return searchableText.includes(orderSearchQuery);
+        });
         if (filtroComercio !== 'todos') {
             pedidosCol = pedidosCol.filter(p => p.comercio_id == filtroComercio);
         }
@@ -135,6 +200,12 @@ function renderKanbanColumns() {
 
         const cardsContainer = colEl.querySelector('.column-cards');
         pedidosCol.forEach(p => cardsContainer.appendChild(createOrderCard(p)));
+        if (pedidosCol.length === 0) {
+            const emptyMessage = document.createElement('p');
+            emptyMessage.className = 'empty-column';
+            emptyMessage.textContent = orderSearchQuery ? 'No hay pedidos que coincidan.' : 'No hay pedidos.';
+            cardsContainer.appendChild(emptyMessage);
+        }
     });
     
     if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -148,14 +219,23 @@ function createOrderCard(pedido) {
     if (!comercio) return document.createElement('div');
 
     const card = document.createElement('div');
-    // CAMBIO 1: Si está entregado, agregamos la clase 'collapsed' por defecto
-    card.className = pedido.estado === 'entregado' ? 'order-card collapsed' : 'order-card';
+    const collapsedByDefault = window.innerWidth <= 768 || pedido.estado === 'entregado';
+    const collapsed = orderCardExpanded.has(pedido.id)
+        ? !orderCardExpanded.get(pedido.id)
+        : collapsedByDefault;
+    card.className = collapsed ? 'order-card collapsed' : 'order-card';
+    card.dataset.orderId = pedido.id;
+    const estadoTexto = (pedido.estado || 'pendiente').replace(/_/g, ' ');
     
     const headerHtml = `
-        <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+        <div class="card-header" role="button" tabindex="0" aria-expanded="${!collapsed}" onclick="window.toggleOrderCard(this, ${pedido.id})" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); window.toggleOrderCard(this, ${pedido.id}); }">
             <div>
-                <span class="comercio-name">${comercio.nombre}</span>
-                <span class="card-time" style="margin-left: 8px;">#${pedido.id}</span>
+                <div class="card-title-row">
+                    <span class="comercio-name">${comercio.nombre}</span>
+                    <span class="card-time">#${pedido.id}</span>
+                    <span class="order-state">${estadoTexto}</span>
+                </div>
+                <span class="card-summary">${cliente?.nombre || 'Sin nombre'} · ${pedido.direccion_entrega || 'Sin dirección'}</span>
             </div>
             <div style="display: flex; align-items: center; gap: 8px;">
                 ${rider ? `<span style="font-size: 0.8rem; color: var(--primary); font-weight: 500;"><i data-lucide="bike" size="14"></i> ${rider.nombre}</span>` : '<span style="font-size: 0.8rem; color: var(--text-muted);">Sin rider</span>'}
@@ -217,6 +297,14 @@ function createOrderCard(pedido) {
     return card;
 }
 
+window.toggleOrderCard = function(header, pedidoId) {
+    const card = header.parentElement;
+    const expanded = card.classList.contains('collapsed');
+    card.classList.toggle('collapsed', !expanded);
+    header.setAttribute('aria-expanded', String(expanded));
+    orderCardExpanded.set(pedidoId, expanded);
+};
+
 function renderSidebar() {
     const ridersList = document.getElementById('riders-list');
     if (ridersList) {
@@ -266,6 +354,14 @@ function setupListeners() {
         filtroComercio = e.target.value;
         renderKanbanColumns();
     });
+
+    const orderSearch = document.getElementById('search-orders');
+    if (orderSearch) {
+        orderSearch.addEventListener('input', () => {
+            orderSearchQuery = orderSearch.value.trim().toLocaleLowerCase();
+            renderKanbanColumns();
+        });
+    }
 
     const closeBtns = [
         { id: 'close-modal', modal: 'modal-overlay' },
@@ -643,6 +739,7 @@ window.deleteAllDelivered = async function() {
 function mostrarVista(vista) {
     const kanban = document.getElementById('kanban-board');
     const liquidaciones = document.getElementById('vista-liquidaciones');
+    const boardTools = document.getElementById('board-tools');
     const btnPedidos = document.getElementById('btn-vista-pedidos');
     const btnLiquidaciones = document.getElementById('btn-vista-liquidaciones');
 
@@ -651,6 +748,7 @@ function mostrarVista(vista) {
         if (vista === 'pedidos') {
         if (kanban) kanban.style.display = 'flex';
         if (liquidaciones) liquidaciones.style.display = 'none';
+            if (boardTools) boardTools.style.display = 'flex';
         
         // Pedidos activo (azul)
         if (btnPedidos) {
@@ -667,6 +765,7 @@ function mostrarVista(vista) {
     } else if (vista === 'liquidaciones') {
         if (kanban) kanban.style.display = 'none';
         if (liquidaciones) liquidaciones.style.display = 'block';
+        if (boardTools) boardTools.style.display = 'none';
         
         // Pedidos inactivo (blanco)
         if (btnPedidos) {
@@ -942,35 +1041,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
-
-//Mostrar u ocultar header al scrollear (solo en movil)
-const header = document.querySelector('.header');
-const scrollContainer = document.querySelector('.kanban-board'); // o .container si ese es el que scrollea
-
-let lastScrollTop = 0;
-
-function handleHeaderScroll() {
-  if (window.innerWidth > 768) return;
-
-  const current = scrollContainer ? scrollContainer.scrollTop : window.scrollY;
-
-  if (current > lastScrollTop && current > 40) {
-    header.classList.add('hidden');
-  } else {
-    header.classList.remove('hidden');
-  }
-
-  lastScrollTop = current;
-}
-
-if (scrollContainer) {
-  scrollContainer.addEventListener('scroll', handleHeaderScroll, { passive: true });
-} else {
-  window.addEventListener('scroll', handleHeaderScroll, { passive: true });
-}
-
-if (current > lastScrollTop && current > 40) {
-  header.classList.add('header-hidden');
-} else {
-  header.classList.remove('header-hidden');
-}
