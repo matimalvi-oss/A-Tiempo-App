@@ -203,8 +203,8 @@ Mensaje:
                     "pagado": {"type": "BOOLEAN", "nullable": True},
                 },
             },
-            "temperature": 0.1,
             "maxOutputTokens": 512,
+            "thinkingConfig": {"thinkingLevel": "LOW"},
         },
     }
     request = Request(
