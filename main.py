@@ -10,10 +10,12 @@ from urllib.error import HTTPError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 import json
+import logging
 import uvicorn
 import os
 
 app = FastAPI()
+logger = logging.getLogger(__name__)
 
 # --- MIDDLEWARE CORS ---
 app.add_middleware(
@@ -217,8 +219,26 @@ Mensaje:
         with urlopen(request, timeout=20) as response:
             provider_response = json.loads(response.read().decode("utf-8"))
     except HTTPError as error:
-        print(f"Gemini API respondió con estado HTTP {error.code}")
-        raise HTTPException(502, "No se pudo interpretar el mensaje con Gemini")
+        try:
+            error_response = json.loads(error.read(4096).decode("utf-8"))
+            provider_error = error_response.get("error", {})
+            provider_message = str(provider_error.get("message", ""))
+            provider_status = str(provider_error.get("status", ""))
+        except (UnicodeDecodeError, json.JSONDecodeError, AttributeError):
+            provider_message = ""
+            provider_status = ""
+        provider_message = provider_message.replace(api_key, "[REDACTED]")[:500]
+        logger.warning(
+            "Gemini API error: HTTP %s, model=%s, status=%s, message=%s",
+            error.code,
+            model,
+            provider_status,
+            provider_message or "No se recibió detalle del proveedor",
+        )
+        raise HTTPException(
+            502,
+            f"Gemini rechazó la solicitud (HTTP {error.code}). Revisá los logs del servidor.",
+        )
     except (TimeoutError, OSError):
         raise HTTPException(502, "No se pudo conectar con Gemini para interpretar el mensaje")
     except (UnicodeDecodeError, json.JSONDecodeError):
