@@ -7,11 +7,11 @@ from typing import Optional
 from datetime import datetime, timedelta
 from database import get_db, init_db, row_to_dict, rows_to_list
 from urllib.error import HTTPError
-from urllib.parse import quote
 from urllib.request import Request, urlopen
 import json
 import uvicorn
 import os
+import time
 
 app = FastAPI()
 
@@ -181,30 +181,34 @@ Mensaje:
 <mensaje>
 {mensaje}
 </mensaje>"""
-    model = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
+    model = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
     timeout_seconds = 60
-    url = (
-        "https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{quote(model, safe='')}:generateContent"
-    )
+    url = "https://generativelanguage.googleapis.com/v1beta/interactions"
+    fields = {
+        "comercio": ["string", "null"],
+        "cliente_nombre": ["string", "null"],
+        "cliente_telefono": ["string", "null"],
+        "direccion_entrega": ["string", "null"],
+        "monto_a_cobrar": ["number", "null"],
+        "costo_delivery": ["number", "null"],
+        "pagado": ["boolean", "null"],
+    }
     payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "responseMimeType": "application/json",
-            "responseSchema": {
-                "type": "OBJECT",
-                "properties": {
-                    "comercio": {"type": "STRING", "nullable": True},
-                    "cliente_nombre": {"type": "STRING", "nullable": True},
-                    "cliente_telefono": {"type": "STRING", "nullable": True},
-                    "direccion_entrega": {"type": "STRING", "nullable": True},
-                    "monto_a_cobrar": {"type": "NUMBER", "nullable": True},
-                    "costo_delivery": {"type": "NUMBER", "nullable": True},
-                    "pagado": {"type": "BOOLEAN", "nullable": True},
-                },
+        "model": model,
+        "input": prompt,
+        "store": False,
+        "response_format": {
+            "type": "text",
+            "mime_type": "application/json",
+            "schema": {
+                "type": "object",
+                "properties": {name: {"type": field_type} for name, field_type in fields.items()},
+                "required": list(fields),
             },
-            "maxOutputTokens": 512,
-            "thinkingConfig": {"thinkingLevel": "LOW"},
+        },
+        "generation_config": {
+            "max_output_tokens": 512,
+            "thinking_level": "minimal",
         },
     }
     request = Request(
@@ -214,6 +218,7 @@ Mensaje:
         method="POST",
     )
 
+    started_at = time.monotonic()
     try:
         with urlopen(request, timeout=timeout_seconds) as response:
             provider_response = json.loads(response.read().decode("utf-8"))
@@ -232,7 +237,8 @@ Mensaje:
             .replace(mensaje, "[MENSAJE REDACTADO]")[:500]
         )
         print(
-            f"AI_DIAGNOSTIC provider_http_error code={error.code} model={model} "
+            f"AI_DIAGNOSTIC provider_http_error api=interactions "
+            f"code={error.code} model={model} "
             f"status={provider_status or 'unknown'} "
             f"message={provider_message or 'No se recibió detalle del proveedor'}",
             flush=True,
@@ -243,7 +249,8 @@ Mensaje:
         )
     except TimeoutError:
         print(
-            f"AI_DIAGNOSTIC timeout model={model} timeout_seconds={timeout_seconds}",
+            f"AI_DIAGNOSTIC timeout model={model} api=interactions "
+            f"timeout_seconds={timeout_seconds}",
             flush=True,
         )
         raise HTTPException(
@@ -261,20 +268,28 @@ Mensaje:
         raise HTTPException(502, "Gemini devolvió una respuesta inválida")
 
     try:
-        text = provider_response["candidates"][0]["content"]["parts"][0]["text"]
+        text = next(
+            item["text"]
+            for step in reversed(provider_response["steps"])
+            if step.get("type") == "model_output"
+            for item in step.get("content", [])
+            if item.get("type") == "text" and isinstance(item.get("text"), str)
+        )
         interpreted = InterpretedOrderMessage.model_validate_json(text)
-    except (KeyError, IndexError, TypeError, ValueError):
-        try:
-            finish_reason = provider_response["candidates"][0].get("finishReason", "unknown")
-        except (KeyError, IndexError, TypeError):
-            finish_reason = "missing_candidate"
+    except (KeyError, StopIteration, TypeError, ValueError):
+        response_status = provider_response.get("status", "unknown")
         print(
-            f"AI_DIAGNOSTIC invalid_model_response model={model} "
-            f"finish_reason={finish_reason}",
+            f"AI_DIAGNOSTIC invalid_model_response model={model} api=interactions "
+            f"status={response_status}",
             flush=True,
         )
         raise HTTPException(502, "Gemini no devolvió datos de pedido válidos")
 
+    print(
+        f"AI_DIAGNOSTIC success model={model} api=interactions "
+        f"elapsed_seconds={time.monotonic() - started_at:.1f}",
+        flush=True,
+    )
     return interpreted.model_dump()
 
 @app.post("/api/pedidos")
