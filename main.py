@@ -1,7 +1,7 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request as FastAPIRequest
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime, timedelta
@@ -9,6 +9,7 @@ from database import get_db, init_db, row_to_dict, rows_to_list
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 import json
+import hmac
 import uvicorn
 import os
 import time
@@ -40,6 +41,27 @@ async def manifest():
 @app.get("/sw.js")
 async def service_worker():
     return FileResponse("static/sw.js", media_type="application/javascript")
+
+@app.get("/webhooks/meta/whatsapp")
+async def verificar_webhook_whatsapp(request: FastAPIRequest):
+    verify_token = os.environ.get("META_WEBHOOK_VERIFY_TOKEN")
+    if not verify_token:
+        raise HTTPException(503, "Falta configurar META_WEBHOOK_VERIFY_TOKEN")
+
+    params = request.query_params
+    mode = params.get("hub.mode")
+    provided_token = params.get("hub.verify_token", "")
+    challenge = params.get("hub.challenge")
+
+    if mode != "subscribe" or not hmac.compare_digest(
+        provided_token.encode("utf-8"),
+        verify_token.encode("utf-8"),
+    ):
+        raise HTTPException(403, "Verificación de webhook rechazada")
+    if challenge is None:
+        raise HTTPException(400, "Falta el parámetro hub.challenge")
+
+    return PlainTextResponse(challenge)
 
 # --- INICIALIZAR BASE DE DATOS ---
 init_db()
