@@ -66,6 +66,19 @@ def init_db():
                 hora_entrega TIMESTAMP
             )
         """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS whatsapp_messages (
+                message_id TEXT PRIMARY KEY,
+                sender_wa_id TEXT NOT NULL,
+                phone_number_id TEXT,
+                message_type TEXT NOT NULL,
+                message_timestamp TEXT,
+                text_body TEXT,
+                message_data JSONB NOT NULL,
+                received_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
         
         conn.commit()
         print("✅ Base de datos PostgreSQL inicializada correctamente.")

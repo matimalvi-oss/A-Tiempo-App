@@ -88,6 +88,85 @@ async def recibir_webhook_whatsapp(request: FastAPIRequest):
     if not isinstance(payload, dict):
         raise HTTPException(400, "El cuerpo del webhook debe ser un objeto JSON")
 
+    if payload.get("object") != "whatsapp_business_account":
+        print("WHATSAPP_WEBHOOK ignored unsupported object", flush=True)
+        return {"status": "ignored"}
+
+    conn = get_db()
+    try:
+        cursor = conn.cursor()
+        entries = payload.get("entry", [])
+        if not isinstance(entries, list):
+            raise HTTPException(400, "Formato de entradas del webhook inválido")
+        for entry in entries:
+            if not isinstance(entry, dict):
+                raise HTTPException(400, "Formato de entrada del webhook inválido")
+            changes = entry.get("changes", [])
+            if not isinstance(changes, list):
+                raise HTTPException(400, "Formato de cambios del webhook inválido")
+            for change in changes:
+                if not isinstance(change, dict):
+                    raise HTTPException(400, "Formato de cambio del webhook inválido")
+                value = change.get("value", {})
+                if not isinstance(value, dict):
+                    raise HTTPException(400, "Formato de valor del webhook inválido")
+
+                metadata = value.get("metadata", {})
+                if not isinstance(metadata, dict):
+                    raise HTTPException(400, "Formato de metadata del webhook inválido")
+                phone_number_id = metadata.get("phone_number_id")
+                if phone_number_id is not None and not isinstance(phone_number_id, str):
+                    raise HTTPException(400, "Formato de phone_number_id inválido")
+
+                messages = value.get("messages", [])
+                if not isinstance(messages, list):
+                    raise HTTPException(400, "Formato de mensajes del webhook inválido")
+                for message in messages:
+                    if not isinstance(message, dict):
+                        raise HTTPException(400, "Formato de mensaje del webhook inválido")
+
+                    message_id = message.get("id")
+                    sender_wa_id = message.get("from")
+                    message_type = message.get("type")
+                    if not all(
+                        isinstance(field, str) and field
+                        for field in (message_id, sender_wa_id, message_type)
+                    ):
+                        raise HTTPException(400, "Faltan datos obligatorios del mensaje")
+                    message_timestamp = message.get("timestamp")
+                    if message_timestamp is not None and not isinstance(message_timestamp, str):
+                        raise HTTPException(400, "Formato de timestamp del mensaje inválido")
+
+                    text_body = None
+                    if message_type == "text":
+                        text = message.get("text", {})
+                        if isinstance(text, dict) and isinstance(text.get("body"), str):
+                            text_body = text["body"]
+
+                    cursor.execute(
+                        """
+                        INSERT INTO whatsapp_messages (
+                            message_id, sender_wa_id, phone_number_id, message_type,
+                            message_timestamp, text_body, message_data
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb)
+                        ON CONFLICT (message_id) DO NOTHING
+                        """,
+                        (
+                            message_id,
+                            sender_wa_id,
+                            phone_number_id,
+                            message_type,
+                            message_timestamp,
+                            text_body,
+                            json.dumps(message, ensure_ascii=False),
+                        ),
+                    )
+
+        conn.commit()
+    finally:
+        conn.close()
+
     return {"status": "received"}
 
 # --- INICIALIZAR BASE DE DATOS ---
