@@ -63,6 +63,33 @@ async def verificar_webhook_whatsapp(request: FastAPIRequest):
 
     return PlainTextResponse(challenge)
 
+@app.post("/webhooks/meta/whatsapp")
+async def recibir_webhook_whatsapp(request: FastAPIRequest):
+    app_secret = os.environ.get("META_APP_SECRET")
+    if not app_secret:
+        raise HTTPException(503, "Falta configurar META_APP_SECRET")
+
+    signature = request.headers.get("x-hub-signature-256", "")
+    body = await request.body()
+    expected_signature = "sha256=" + hmac.new(
+        app_secret.encode("utf-8"),
+        body,
+        digestmod="sha256",
+    ).hexdigest()
+
+    if not hmac.compare_digest(signature, expected_signature):
+        raise HTTPException(401, "Firma de webhook inválida")
+
+    try:
+        payload = json.loads(body)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        raise HTTPException(400, "El cuerpo del webhook no es JSON válido")
+
+    if not isinstance(payload, dict):
+        raise HTTPException(400, "El cuerpo del webhook debe ser un objeto JSON")
+
+    return {"status": "received"}
+
 # --- INICIALIZAR BASE DE DATOS ---
 init_db()
 
