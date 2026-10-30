@@ -76,8 +76,17 @@ def init_db():
                 message_timestamp TEXT,
                 text_body TEXT,
                 message_data JSONB NOT NULL,
+                auto_reply_status TEXT NOT NULL DEFAULT 'pending',
+                auto_reply_message_id TEXT,
+                auto_reply_updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 received_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
+        """)
+        cursor.execute("""
+            ALTER TABLE whatsapp_messages
+            ADD COLUMN IF NOT EXISTS auto_reply_status TEXT NOT NULL DEFAULT 'pending',
+            ADD COLUMN IF NOT EXISTS auto_reply_message_id TEXT,
+            ADD COLUMN IF NOT EXISTS auto_reply_updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
         """)
         
         conn.commit()

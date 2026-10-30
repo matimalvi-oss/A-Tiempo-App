@@ -8,10 +8,12 @@ from datetime import datetime, timedelta
 from database import get_db, init_db, row_to_dict, rows_to_list
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
+import asyncio
 import json
 import hmac
 import uvicorn
 import os
+import re
 import time
 
 app = FastAPI()
@@ -63,6 +65,50 @@ async def verificar_webhook_whatsapp(request: FastAPIRequest):
 
     return PlainTextResponse(challenge)
 
+def enviar_mensaje_whatsapp(phone_number_id, recipient, message, access_token, api_version):
+    url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
+    payload = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": recipient,
+        "type": "text",
+        "text": {"preview_url": False, "body": message},
+    }
+    outbound_request = Request(
+        url,
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+
+    try:
+        with urlopen(outbound_request, timeout=15) as response:
+            response_body = json.loads(response.read().decode("utf-8"))
+    except HTTPError as error:
+        print(
+            f"WHATSAPP_AUTO_REPLY provider_http_error code={error.code}",
+            flush=True,
+        )
+        return False, None
+    except (TimeoutError, OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        print(
+            f"WHATSAPP_AUTO_REPLY provider_error type={type(error).__name__}",
+            flush=True,
+        )
+        return False, None
+
+    messages = response_body.get("messages", []) if isinstance(response_body, dict) else []
+    sent_message_id = (
+        messages[0].get("id")
+        if messages and isinstance(messages[0], dict)
+        else None
+    )
+    return True, sent_message_id
+
+
 @app.post("/webhooks/meta/whatsapp")
 async def recibir_webhook_whatsapp(request: FastAPIRequest):
     app_secret = os.environ.get("META_APP_SECRET")
@@ -92,82 +138,168 @@ async def recibir_webhook_whatsapp(request: FastAPIRequest):
         print("WHATSAPP_WEBHOOK ignored unsupported object", flush=True)
         return {"status": "ignored"}
 
+    inbound_messages = []
+    entries = payload.get("entry", [])
+    if not isinstance(entries, list):
+        raise HTTPException(400, "Formato de entradas del webhook inválido")
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise HTTPException(400, "Formato de entrada del webhook inválido")
+        changes = entry.get("changes", [])
+        if not isinstance(changes, list):
+            raise HTTPException(400, "Formato de cambios del webhook inválido")
+        for change in changes:
+            if not isinstance(change, dict):
+                raise HTTPException(400, "Formato de cambio del webhook inválido")
+            value = change.get("value", {})
+            if not isinstance(value, dict):
+                raise HTTPException(400, "Formato de valor del webhook inválido")
+
+            messages = value.get("messages", [])
+            if not isinstance(messages, list):
+                raise HTTPException(400, "Formato de mensajes del webhook inválido")
+            if not messages:
+                continue
+
+            metadata = value.get("metadata", {})
+            if not isinstance(metadata, dict):
+                raise HTTPException(400, "Formato de metadata del webhook inválido")
+            phone_number_id = metadata.get("phone_number_id")
+            if not isinstance(phone_number_id, str) or not phone_number_id.isdigit():
+                raise HTTPException(400, "Falta un phone_number_id válido")
+
+            for message in messages:
+                if not isinstance(message, dict):
+                    raise HTTPException(400, "Formato de mensaje del webhook inválido")
+
+                message_id = message.get("id")
+                sender_wa_id = message.get("from")
+                message_type = message.get("type")
+                if not all(
+                    isinstance(field, str) and field
+                    for field in (message_id, sender_wa_id, message_type)
+                ):
+                    raise HTTPException(400, "Faltan datos obligatorios del mensaje")
+                message_timestamp = message.get("timestamp")
+                if message_timestamp is not None and not isinstance(message_timestamp, str):
+                    raise HTTPException(400, "Formato de timestamp del mensaje inválido")
+
+                text_body = None
+                if message_type == "text":
+                    text = message.get("text", {})
+                    if isinstance(text, dict) and isinstance(text.get("body"), str):
+                        text_body = text["body"]
+
+                inbound_messages.append({
+                    "message_id": message_id,
+                    "sender_wa_id": sender_wa_id,
+                    "phone_number_id": phone_number_id,
+                    "message_type": message_type,
+                    "message_timestamp": message_timestamp,
+                    "text_body": text_body,
+                    "message_data": json.dumps(message, ensure_ascii=False),
+                })
+
+    if not inbound_messages:
+        return {"status": "received"}
+
+    access_token = os.environ.get("META_WHATSAPP_ACCESS_TOKEN")
+    api_version = os.environ.get("META_GRAPH_API_VERSION")
+    reply_text = os.environ.get(
+        "META_WHATSAPP_AUTO_REPLY",
+        "¡Hola! Esta es una respuesta de prueba, app en proceso",
+    )
+    if not access_token:
+        raise HTTPException(503, "Falta configurar META_WHATSAPP_ACCESS_TOKEN")
+    if not api_version or not re.fullmatch(r"v\d+\.\d+", api_version):
+        raise HTTPException(503, "Configura META_GRAPH_API_VERSION con una versión válida")
+    if not reply_text.strip() or len(reply_text) > 4096:
+        raise HTTPException(503, "META_WHATSAPP_AUTO_REPLY debe tener entre 1 y 4096 caracteres")
+
     conn = get_db()
+    messages_to_reply = []
     try:
         cursor = conn.cursor()
-        entries = payload.get("entry", [])
-        if not isinstance(entries, list):
-            raise HTTPException(400, "Formato de entradas del webhook inválido")
-        for entry in entries:
-            if not isinstance(entry, dict):
-                raise HTTPException(400, "Formato de entrada del webhook inválido")
-            changes = entry.get("changes", [])
-            if not isinstance(changes, list):
-                raise HTTPException(400, "Formato de cambios del webhook inválido")
-            for change in changes:
-                if not isinstance(change, dict):
-                    raise HTTPException(400, "Formato de cambio del webhook inválido")
-                value = change.get("value", {})
-                if not isinstance(value, dict):
-                    raise HTTPException(400, "Formato de valor del webhook inválido")
-
-                metadata = value.get("metadata", {})
-                if not isinstance(metadata, dict):
-                    raise HTTPException(400, "Formato de metadata del webhook inválido")
-                phone_number_id = metadata.get("phone_number_id")
-                if phone_number_id is not None and not isinstance(phone_number_id, str):
-                    raise HTTPException(400, "Formato de phone_number_id inválido")
-
-                messages = value.get("messages", [])
-                if not isinstance(messages, list):
-                    raise HTTPException(400, "Formato de mensajes del webhook inválido")
-                for message in messages:
-                    if not isinstance(message, dict):
-                        raise HTTPException(400, "Formato de mensaje del webhook inválido")
-
-                    message_id = message.get("id")
-                    sender_wa_id = message.get("from")
-                    message_type = message.get("type")
-                    if not all(
-                        isinstance(field, str) and field
-                        for field in (message_id, sender_wa_id, message_type)
-                    ):
-                        raise HTTPException(400, "Faltan datos obligatorios del mensaje")
-                    message_timestamp = message.get("timestamp")
-                    if message_timestamp is not None and not isinstance(message_timestamp, str):
-                        raise HTTPException(400, "Formato de timestamp del mensaje inválido")
-
-                    text_body = None
-                    if message_type == "text":
-                        text = message.get("text", {})
-                        if isinstance(text, dict) and isinstance(text.get("body"), str):
-                            text_body = text["body"]
-
-                    cursor.execute(
-                        """
-                        INSERT INTO whatsapp_messages (
-                            message_id, sender_wa_id, phone_number_id, message_type,
-                            message_timestamp, text_body, message_data
-                        )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb)
-                        ON CONFLICT (message_id) DO NOTHING
-                        """,
-                        (
-                            message_id,
-                            sender_wa_id,
-                            phone_number_id,
-                            message_type,
-                            message_timestamp,
-                            text_body,
-                            json.dumps(message, ensure_ascii=False),
-                        ),
+        for message in inbound_messages:
+            cursor.execute(
+                """
+                INSERT INTO whatsapp_messages (
+                    message_id, sender_wa_id, phone_number_id, message_type,
+                    message_timestamp, text_body, message_data
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb)
+                ON CONFLICT (message_id) DO NOTHING
+                """,
+                (
+                    message["message_id"],
+                    message["sender_wa_id"],
+                    message["phone_number_id"],
+                    message["message_type"],
+                    message["message_timestamp"],
+                    message["text_body"],
+                    message["message_data"],
+                ),
+            )
+            cursor.execute(
+                """
+                UPDATE whatsapp_messages
+                SET auto_reply_status = 'sending',
+                    auto_reply_updated_at = CURRENT_TIMESTAMP
+                WHERE message_id = %s
+                  AND (
+                    auto_reply_status IN ('pending', 'failed')
+                    OR (
+                        auto_reply_status = 'sending'
+                        AND auto_reply_updated_at < CURRENT_TIMESTAMP - INTERVAL '5 minutes'
                     )
-
+                  )
+                RETURNING message_id
+                """,
+                (message["message_id"],),
+            )
+            if cursor.fetchone():
+                messages_to_reply.append(message)
         conn.commit()
+
+        failed_sends = 0
+        for message in messages_to_reply:
+            sent, outgoing_message_id = await asyncio.to_thread(
+                enviar_mensaje_whatsapp,
+                message["phone_number_id"],
+                message["sender_wa_id"],
+                reply_text,
+                access_token,
+                api_version,
+            )
+            if sent:
+                cursor.execute(
+                    """
+                    UPDATE whatsapp_messages
+                    SET auto_reply_status = 'sent',
+                        auto_reply_message_id = %s,
+                        auto_reply_updated_at = CURRENT_TIMESTAMP
+                    WHERE message_id = %s
+                    """,
+                    (outgoing_message_id, message["message_id"]),
+                )
+            else:
+                failed_sends += 1
+                cursor.execute(
+                    """
+                    UPDATE whatsapp_messages
+                    SET auto_reply_status = 'failed',
+                        auto_reply_updated_at = CURRENT_TIMESTAMP
+                    WHERE message_id = %s
+                    """,
+                    (message["message_id"],),
+                )
+            conn.commit()
     finally:
         conn.close()
 
-    return {"status": "received"}
+    if failed_sends:
+        raise HTTPException(502, "No se pudo enviar la respuesta automática; Meta puede reintentar")
+    return {"status": "received", "replies_sent": len(messages_to_reply)}
 
 # --- INICIALIZAR BASE DE DATOS ---
 init_db()
