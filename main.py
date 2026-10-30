@@ -16,6 +16,10 @@ import os
 import re
 import time
 
+from bot.api import router as bot_api_router
+from bot.webhook import router as whatsapp_webhook_router
+from bot.worker import run_worker
+
 app = FastAPI()
 
 # --- MIDDLEWARE CORS ---
@@ -29,6 +33,26 @@ app.add_middleware(
 
 # --- SERVIDOR DE ARCHIVOS ESTÁTICOS ---
 app.mount("/static", StaticFiles(directory="static"), name="static")
+app.include_router(whatsapp_webhook_router)
+app.include_router(bot_api_router)
+
+_bot_worker_task = None
+
+
+@app.on_event("startup")
+async def iniciar_worker_bot():
+    global _bot_worker_task
+    _bot_worker_task = asyncio.create_task(run_worker())
+
+
+@app.on_event("shutdown")
+async def detener_worker_bot():
+    if _bot_worker_task:
+        _bot_worker_task.cancel()
+        try:
+            await _bot_worker_task
+        except asyncio.CancelledError:
+            pass
 
 # --- RUTAS PWA ---
 @app.get("/", response_class=HTMLResponse)
@@ -43,27 +67,6 @@ async def manifest():
 @app.get("/sw.js")
 async def service_worker():
     return FileResponse("static/sw.js", media_type="application/javascript")
-
-@app.get("/webhooks/meta/whatsapp")
-async def verificar_webhook_whatsapp(request: FastAPIRequest):
-    verify_token = os.environ.get("META_WEBHOOK_VERIFY_TOKEN")
-    if not verify_token:
-        raise HTTPException(503, "Falta configurar META_WEBHOOK_VERIFY_TOKEN")
-
-    params = request.query_params
-    mode = params.get("hub.mode")
-    provided_token = params.get("hub.verify_token", "")
-    challenge = params.get("hub.challenge")
-
-    if mode != "subscribe" or not hmac.compare_digest(
-        provided_token.encode("utf-8"),
-        verify_token.encode("utf-8"),
-    ):
-        raise HTTPException(403, "Verificación de webhook rechazada")
-    if challenge is None:
-        raise HTTPException(400, "Falta el parámetro hub.challenge")
-
-    return PlainTextResponse(challenge)
 
 def enviar_mensaje_whatsapp(phone_number_id, recipient, message, access_token, api_version):
     url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
@@ -109,7 +112,6 @@ def enviar_mensaje_whatsapp(phone_number_id, recipient, message, access_token, a
     return True, sent_message_id
 
 
-@app.post("/webhooks/meta/whatsapp")
 async def recibir_webhook_whatsapp(request: FastAPIRequest):
     app_secret = os.environ.get("META_APP_SECRET")
     if not app_secret:

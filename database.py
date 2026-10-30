@@ -11,6 +11,8 @@ def get_db():
         database_url,
         cursor_factory=RealDictCursor
     )
+    with conn.cursor() as cursor:
+        cursor.execute("SET TIME ZONE 'America/Argentina/Mendoza'")
     return conn
 
 def init_db():
