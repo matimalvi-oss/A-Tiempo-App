@@ -39,8 +39,25 @@ def enviar_texto(destinatario: str, texto: str) -> str:
         with urlopen(request, timeout=15) as response:
             response_body = json.loads(response.read().decode("utf-8"))
     except HTTPError as error:
+        try:
+            error_body = json.loads(error.read(4096).decode("utf-8"))
+            provider_error = error_body.get("error", {})
+        except (UnicodeDecodeError, json.JSONDecodeError, AttributeError):
+            provider_error = {}
+        if not isinstance(provider_error, dict):
+            provider_error = {}
+        provider_message = str(provider_error.get("message", ""))
+        provider_message = (
+            provider_message.replace(access_token, "[REDACTED]")
+            .replace(destinatario, "[REDACTED]")
+            .replace(phone_number_id, "[REDACTED]")[:300]
+        )
+        provider_code = provider_error.get("code", "unknown")
+        provider_type = provider_error.get("type", "unknown")
         raise WhatsAppDeliveryError(
-            f"WhatsApp Cloud API rechazó el envío (HTTP {error.code})."
+            f"WhatsApp Cloud API rechazó el envío (HTTP {error.code}, "
+            f"code={provider_code}, type={provider_type}): "
+            f"{provider_message or 'Meta no devolvió detalle del error.'}"
         ) from error
     except (TimeoutError, OSError, URLError, UnicodeDecodeError, json.JSONDecodeError) as error:
         raise WhatsAppDeliveryError(
