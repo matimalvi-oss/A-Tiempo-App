@@ -173,9 +173,33 @@ class ConversationAgent:
                     }
                 )
             if iteration == 4:
-                raise GeminiAgentError(
-                    "Gemini superó el máximo de cinco iteraciones con herramientas."
+                reason = (
+                    "El asistente alcanzó el límite de pasos al procesar el mensaje."
                 )
+                handoff = self.tools.execute(
+                    "pasar_a_humano",
+                    {"motivo": reason},
+                )
+                tool_calls.append(
+                    {
+                        "nombre": "pasar_a_humano",
+                        "argumentos": {"motivo": reason},
+                        "resultado": handoff,
+                    }
+                )
+                return {
+                    "respuesta": (
+                        (
+                            "Hola, soy el asistente automático de la empresa de delivery. "
+                            "Una persona supervisa y puede intervenir. "
+                            if welcome_pending
+                            else ""
+                        )
+                        + "Se me complicó terminar de procesar esto automáticamente. "
+                        + "Dejo el caso para que una persona lo revise."
+                    ),
+                    "herramientas": tool_calls,
+                }
         raise GeminiAgentError("El ciclo de Gemini terminó sin respuesta.")
 
     @staticmethod

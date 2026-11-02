@@ -1,6 +1,6 @@
 import unittest
 
-from bot.agent import ConversationAgent, GeminiAgentError
+from bot.agent import ConversationAgent
 from bot.worker import _render_message
 
 
@@ -321,18 +321,21 @@ class ConversationAgentTests(unittest.TestCase):
         self.assertIn("No puedo compartir", result["respuesta"])
         self.assertEqual(tools.calls[0][0], "pasar_a_humano")
 
-    def test_agent_stops_after_five_function_call_iterations(self):
+    def test_agent_hands_off_after_five_function_call_iterations(self):
         call = model_call("consultar_tarifa", {"direccion": "Alem 10"})
         client = GeminiSimulator([call, call, call, call, call])
-        agent = ConversationAgent(client=client, tools=ToolSimulator())
-        with self.assertRaisesRegex(GeminiAgentError, "cinco iteraciones"):
-            agent.run(
-                history=[{"role": "user", "text": "¿Tarifa?"}],
-                commerce_name="Local de prueba",
-                open_orders=[],
-                welcome_pending=False,
-            )
+        tools = ToolSimulator()
+        agent = ConversationAgent(client=client, tools=tools)
+        result = agent.run(
+            history=[{"role": "user", "text": "¿Tarifa?"}],
+            commerce_name="Local de prueba",
+            open_orders=[],
+            welcome_pending=False,
+        )
         self.assertEqual(len(client.requests), 5)
+        self.assertIn("persona lo revise", result["respuesta"])
+        self.assertEqual(tools.calls[-1][0], "pasar_a_humano")
+        self.assertEqual(result["herramientas"][-1]["nombre"], "pasar_a_humano")
 
 
 if __name__ == "__main__":
