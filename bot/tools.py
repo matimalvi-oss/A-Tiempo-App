@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any, Optional
 from zoneinfo import ZoneInfo
@@ -31,7 +31,14 @@ TOOL_DECLARATIONS = [
                 "cliente_nombre": {"type": "STRING", "nullable": True},
                 "cliente_telefono": {"type": "STRING", "nullable": True},
                 "referencia": {"type": "STRING", "nullable": True},
-                "hora_entrega_solicitada": {"type": "STRING", "nullable": True},
+                "hora_entrega_solicitada": {
+                    "type": "STRING",
+                    "description": (
+                        "Fecha y hora ISO completa, o solo HH:MM en hora local "
+                        "de Mendoza cuando el comercio no indicó una fecha."
+                    ),
+                    "nullable": True,
+                },
                 "entrega_en_minutos": {"type": "INTEGER", "nullable": True},
                 "forma_pago": {
                     "type": "STRING",
@@ -152,6 +159,19 @@ def _requested_time(absolute: Any, minutes: Any) -> Optional[datetime]:
         return None
     if not isinstance(absolute, str):
         raise ToolValidationError("hora_entrega_solicitada debe ser una fecha ISO.")
+    absolute = absolute.strip()
+    now = datetime.now(MENDOZA).replace(microsecond=0)
+    if len(absolute) == 5 and absolute[2] == ":":
+        try:
+            requested_clock = time.fromisoformat(absolute)
+        except ValueError as error:
+            raise ToolValidationError(
+                "La hora de entrega debe tener formato HH:MM."
+            ) from error
+        value = datetime.combine(now.date(), requested_clock, tzinfo=MENDOZA)
+        if value < now:
+            value += timedelta(days=1)
+        return value
     try:
         value = datetime.fromisoformat(absolute)
     except ValueError as error:
@@ -161,7 +181,7 @@ def _requested_time(absolute: Any, minutes: Any) -> Optional[datetime]:
     if value.tzinfo is None:
         value = value.replace(tzinfo=MENDOZA)
     value = value.astimezone(MENDOZA)
-    if value < datetime.now(MENDOZA):
+    if value < now:
         raise ToolValidationError("La hora de entrega no puede estar en el pasado.")
     return value
 

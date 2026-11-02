@@ -2,6 +2,8 @@
 
 Prototipo conversacional para los comercios de A Tiempo. El webhook valida la firma de Meta, guarda y deduplica cada mensaje, y un worker agrupa mensajes por conversación antes de llamar a Gemini. El precio de envío es fijo y provisorio; no se consulta Google Maps.
 
+Las horas de entrega sin fecha se interpretan en `America/Argentina/Mendoza`: si la hora todavía no pasó, se agenda para hoy; si ya pasó, para el día siguiente. El asistente recibe la fecha y hora local actual y debe enviar una hora simple como `23:00` sin inventar una fecha.
+
 ## Local
 
 1. Crear un entorno virtual e instalar dependencias:

@@ -80,6 +80,43 @@ class BotToolsTests(unittest.TestCase):
         self.assertIsInstance(requested, datetime)
         self.assertEqual(requested.tzinfo, ZoneInfo("America/Argentina/Mendoza"))
 
+    def test_time_only_uses_today_when_the_requested_time_is_still_ahead(self):
+        class FrozenDateTime(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return cls(2026, 11, 1, 22, 38, tzinfo=tz)
+
+        with patch("bot.tools.datetime", FrozenDateTime):
+            result = self.tools.execute(
+                "guardar_borrador_pedido",
+                {
+                    "pedido_id": 35,
+                    "hora_entrega_solicitada": "23:00",
+                },
+            )
+
+        requested = self.repository.saved[0][1]["hora_entrega_solicitada"]
+        self.assertEqual(requested.isoformat(), "2026-11-01T23:00:00-03:00")
+        self.assertEqual(result["pedido_id"], 14)
+
+    def test_time_only_rolls_to_tomorrow_when_todays_time_has_passed(self):
+        class FrozenDateTime(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return cls(2026, 11, 1, 23, 1, tzinfo=tz)
+
+        with patch("bot.tools.datetime", FrozenDateTime):
+            self.tools.execute(
+                "guardar_borrador_pedido",
+                {
+                    "pedido_id": 35,
+                    "hora_entrega_solicitada": "23:00",
+                },
+            )
+
+        requested = self.repository.saved[0][1]["hora_entrega_solicitada"]
+        self.assertEqual(requested.isoformat(), "2026-11-02T23:00:00-03:00")
+
     def test_incomplete_draft_returns_all_missing_requirements(self):
         result = self.tools.execute(
             "guardar_borrador_pedido",

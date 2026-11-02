@@ -1,9 +1,11 @@
 import json
 import os
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+from zoneinfo import ZoneInfo
 
 from .tools import BotTools, TOOL_DECLARATIONS, ToolValidationError
 
@@ -82,8 +84,17 @@ class ConversationAgent:
         )
         extra_context = [
             f"Comercio actual: {commerce_name}.",
+            "Fecha y hora actual del servidor: "
+            + datetime.now(ZoneInfo("America/Argentina/Mendoza")).isoformat(
+                timespec="minutes"
+            )
+            + " (America/Argentina/Mendoza).",
             "Pedidos abiertos de este comercio (no uses pedidos de otros comercios): "
             + json.dumps(open_orders, ensure_ascii=False, default=str),
+            "Si el local indica solo una hora (por ejemplo, 23:00), pasala a "
+            "hora_entrega_solicitada exactamente como HH:MM; el sistema la "
+            "interpretará en la fecha local más próxima que no haya pasado. "
+            "No inventes ni calcules una fecha.",
         ]
         if welcome_pending:
             extra_context.append(
