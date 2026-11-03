@@ -1,8 +1,10 @@
 import unittest
 from datetime import datetime
+from decimal import Decimal
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
+from bot.tarifa import TarifaNoDisponibleError
 from bot.tools import BotTools, ToolValidationError
 
 
@@ -10,6 +12,10 @@ class FakeRepository:
     def __init__(self):
         self.saved = []
         self.scoped_commerce_ids = []
+        self.confirmed_fees = []
+
+    def commerce_address(self, commerce_id):
+        return "Alem 10, San Rafael, Mendoza"
 
     def save_draft(self, commerce_id, conversation_id, values):
         self.scoped_commerce_ids.append(commerce_id)
@@ -42,6 +48,7 @@ class FakeRepository:
 
     def confirm_order(self, commerce_id, order_id, fee):
         self.scoped_commerce_ids.append(commerce_id)
+        self.confirmed_fees.append(fee)
         return {"pedido_id": order_id, "pedido": {"costo_delivery": str(fee)}}
 
     def cancel_order(self, commerce_id, order_id):
@@ -159,11 +166,38 @@ class BotToolsTests(unittest.TestCase):
                 {"pedido_id": None, "forma_pago": "transferencia", "paga_con": 5000},
             )
 
-    def test_confirm_calculates_a_provisional_tariff_for_the_same_commerce(self):
-        with patch.dict("os.environ", {"TARIFA_PROVISORIA": "1500"}):
+    def test_confirm_uses_configured_tariff_and_stores_its_total(self):
+        quote = {
+            "distancia_km": "2.80",
+            "tarifa_base": "3000.00",
+            "recargo_lluvia": "1500.00",
+            "recargo_lluvia_aplicado": True,
+            "monto": "4500.00",
+            "provisoria": False,
+        }
+        with patch("bot.tools.consultar_tarifa", return_value=quote) as calculate:
             result = self.tools.execute("confirmar_pedido", {"pedido_id": 14})
-        self.assertTrue(result["tarifa_provisoria"])
+        calculate.assert_called_once_with(
+            "Alem 10, San Rafael, Mendoza",
+            "Alem 10",
+            None,
+            None,
+        )
+        self.assertEqual(self.repository.confirmed_fees, [Decimal("4500.00")])
+        self.assertEqual(result["tarifa"], quote)
         self.assertEqual(self.repository.scoped_commerce_ids, [7, 7])
+
+    def test_tariff_failure_hands_off_and_does_not_confirm_order(self):
+        with patch(
+            "bot.tools.consultar_tarifa",
+            side_effect=TarifaNoDisponibleError("El recorrido supera los 9 km."),
+        ):
+            result = self.tools.execute("confirmar_pedido", {"pedido_id": 14})
+
+        self.assertFalse(result["confirmado"])
+        self.assertTrue(result["derivado_a_persona"])
+        self.assertEqual(result["alerta"]["alerta_id"], 3)
+        self.assertEqual(self.repository.confirmed_fees, [])
 
     def test_handoff_always_registers_an_alert_without_staff_configuration(self):
         with patch.dict("os.environ", {"NUMEROS_STAFF": ""}):

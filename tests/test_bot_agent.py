@@ -46,10 +46,20 @@ class ToolSimulator:
             return {
                 "pedido_id": arguments["pedido_id"],
                 "pedido": {"estado": "pendiente"},
-                "tarifa_provisoria": True,
+                "tarifa": {
+                    "monto": "1500.00",
+                    "provisoria": False,
+                },
             }
         if name == "consultar_tarifa":
-            return {"monto": "1500.00", "provisoria": True}
+            return {
+                "distancia_km": "1.25",
+                "tarifa_base": "1500.00",
+                "recargo_lluvia": "0.00",
+                "recargo_lluvia_aplicado": False,
+                "monto": "1500.00",
+                "provisoria": False,
+            }
         if name == "consultar_estado_pedido":
             return {
                 "pedido_id": arguments["pedido_id"],
@@ -217,11 +227,11 @@ class ConversationAgentTests(unittest.TestCase):
         self.assertIn("Alem 10", location_text)
         self.assertIn("Nico 2604555010", contact_text)
 
-    def test_provisional_tariff_uses_tool_result(self):
+    def test_configured_tariff_uses_tool_result(self):
         result, _, tools = self.run_agent(
             [
                 model_call("consultar_tarifa", {"direccion": "Av. San Martín 10"}),
-                model_text("La tarifa provisoria es $1500.00."),
+                model_text("El envío cuesta $1500.00 por 1,25 km."),
             ],
             history=[{"role": "user", "text": "¿Cuánto sale el envío?"}],
         )

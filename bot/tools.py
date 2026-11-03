@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 from database import get_db
 
-from .tarifa import consultar_tarifa
+from .tarifa import TarifaNoDisponibleError, consultar_tarifa
 from .whatsapp_client import WhatsAppDeliveryError, enviar_texto
 
 
@@ -63,7 +63,11 @@ TOOL_DECLARATIONS = [
     },
     {
         "name": "consultar_tarifa",
-        "description": "Consulta la tarifa provisoria fija usando una dirección o coordenadas.",
+        "description": (
+            "Cotiza un envío con la distancia en auto desde la dirección del comercio "
+            "hasta la dirección o ubicación del cliente. El sistema aplica la tabla "
+            "vigente y el recargo por lluvia si está activo."
+        ),
         "parameters": {
             "type": "OBJECT",
             "properties": {
@@ -202,6 +206,22 @@ def _missing_fields(order: dict) -> list[str]:
 
 
 class PostgresBotRepository:
+    def commerce_address(self, comercio_id: int) -> Optional[str]:
+        conn = get_db()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT NULLIF(BTRIM(direccion), '') AS direccion "
+                "FROM comercios WHERE id = %s",
+                (comercio_id,),
+            )
+            result = cursor.fetchone()
+            if not result:
+                raise ToolValidationError("El comercio ya no existe.")
+            return result["direccion"]
+        finally:
+            conn.close()
+
     def open_orders(self, comercio_id: int) -> list[dict]:
         conn = get_db()
         try:
@@ -602,17 +622,23 @@ class BotTools:
             missing = _missing_fields(order)
             if missing:
                 return {"pedido_id": order_id, "faltan": missing}
-            quote = consultar_tarifa(
+            quote = self._quote_or_handoff(
                 order.get("direccion_entrega"),
                 order.get("latitud"),
                 order.get("longitud"),
             )
+            if quote.get("derivado_a_persona"):
+                return {
+                    "pedido_id": order_id,
+                    "confirmado": False,
+                    **quote,
+                }
             confirmed = self.repository.confirm_order(
                 self.comercio_id, order_id, Decimal(quote["monto"])
             )
             if confirmed.get("faltan"):
                 return confirmed
-            confirmed["tarifa_provisoria"] = quote["provisoria"]
+            confirmed["tarifa"] = quote
             return confirmed
         if name == "consultar_tarifa":
             _validate_keys(arguments, {"direccion", "latitud", "longitud"})
@@ -632,7 +658,7 @@ class BotTools:
                 raise ToolValidationError(
                     "Indicá una dirección o compartí una ubicación para consultar la tarifa."
                 )
-            return consultar_tarifa(
+            return self._quote_or_handoff(
                 address,
                 float(latitude) if latitude is not None else None,
                 float(longitude) if longitude is not None else None,
@@ -685,6 +711,34 @@ class BotTools:
                 "notificada": sent_count > 0,
             }
         raise ToolValidationError(f"Herramienta desconocida: {name}.")
+
+    def _quote_or_handoff(
+        self,
+        address: Optional[str],
+        latitude: Optional[float],
+        longitude: Optional[float],
+    ) -> dict:
+        try:
+            origin = self.repository.commerce_address(self.comercio_id)
+            if not origin:
+                raise TarifaNoDisponibleError(
+                    "El comercio no tiene una dirección de origen configurada."
+                )
+            return consultar_tarifa(
+                origin,
+                address,
+                latitude,
+                longitude,
+            )
+        except TarifaNoDisponibleError as error:
+            reason = f"No se pudo cotizar el envío: {error}"
+            alert = self.execute("pasar_a_humano", {"motivo": reason})
+            return {
+                "cotizacion_disponible": False,
+                "error": str(error),
+                "derivado_a_persona": True,
+                "alerta": alert,
+            }
 
     def _save_draft(self, arguments: dict) -> dict:
         allowed = {
